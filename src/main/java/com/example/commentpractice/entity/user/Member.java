@@ -1,0 +1,41 @@
+package com.example.commentpractice.entity.user;
+
+import com.example.commentpractice.entity.Role;
+import com.example.commentpractice.entity.comment.Comment;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+
+import javax.persistence.*;
+import java.util.ArrayList;
+import java.util.List;
+
+@Entity
+@Table
+@Builder
+@Getter
+@AllArgsConstructor
+@NoArgsConstructor
+public class Member {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column
+    private String email;
+
+    @Column
+    private String password;
+
+    @Column
+    private String nickname;
+
+    @Column()
+    @Enumerated(EnumType.STRING)
+    private Role role;
+
+    @OneToMany(mappedBy = "member", targetEntity = Comment.class)
+    private List<Comment> comments = new ArrayList<>(); // list 보다 set 이 좋다고 했는데 뭐엿지
+}
