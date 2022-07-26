@@ -63,13 +63,13 @@ public class CommentController {
     }
 
     // 대댓글 등록
-    @PostMapping("/comments/{commentId}/reply")
+    @PostMapping("/comments/{commentId}")
     public ResponseEntity<Long> saveReply(
             @RequestBody CommentRequest commentRequest,
             @PathVariable("commentId") Long commentId
     ) {
         Long id = commentService.saveReply(commentRequest, commentId);
-        return ResponseEntity.created(URI.create("/comment")).body(id);
+        return ResponseEntity.created(URI.create("/comment/{commentId}")).body(id);
     }
 
     // 대댓글 수정

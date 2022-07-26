@@ -54,6 +54,8 @@ public class CommentService {
     // 댓글 조회
     public List<CommentResponse> getComments(Long userId) {
         // 삭제된 댓글은 '삭제된 댓글입니다' 라고 보여주기
+        commentRepository.findByParentId(1L);
+
         List<CommentResponse> comments = commentRepository
                 .findAll()
                 .stream()
@@ -76,7 +78,6 @@ public class CommentService {
     // 댓글 등록
     public Long saveComment(CommentRequest commentRequest) {
        Comment comment = commentRequest.toEntity();
-
        if(commentRequest.getUserId() == 0){ // 가입하지 않은 경우
             Member member = memberService.saveGuest(commentRequest);
             comment.setMember(member);
@@ -123,18 +124,8 @@ public class CommentService {
         Comment reply = commentRequest.toEntity();
         Member member = memberService.findById(commentRequest.getUserId());
 
-        // 부모댓글 세팅하는 작업
         Comment comment = this.findByCommentId(commentId);
-
-//        commentRepository.findById(commentId).ifPresentOrElse(
-//                (comment) -> reply.setParentComment(commentId)
-//                , () -> {
-//                    throw new ResponseStatusException(
-//                            HttpStatus.NOT_FOUND, "해당번호의 부모 댓글이 없음"
-//                    );
-//                }
-//        );
-
+        reply.setParentAndDepth(commentId, comment.getDepth()+1);
         reply.setMember(member);
         return commentRepository.save(reply).getId();
     }

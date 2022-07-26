@@ -5,6 +5,8 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.util.List;
+
 @Getter
 @Setter
 @Builder
@@ -15,6 +17,7 @@ public class CommentResponse {
     private String comment; // 댓글
     private Integer deleteStatus; // 삭제여부
     private Boolean secret;
+    private List<CommentResponse> comments;
 
     public static CommentResponse of(Comment comment){
         return CommentResponse.builder()
@@ -24,6 +27,7 @@ public class CommentResponse {
                 .comment(comment.getComment())
                 .deleteStatus(comment.getDeleteStatus())
                 .secret(comment.getSecret())
+                .comments() // parent 아이디가 현재 comment의 id와 같은 애들
                 .build();
     }
 }
