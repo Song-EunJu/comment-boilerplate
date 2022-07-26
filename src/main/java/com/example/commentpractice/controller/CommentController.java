@@ -1,8 +1,9 @@
 package com.example.commentpractice.controller;
 
+import com.example.commentpractice.dto.CommentDeleteDto;
+import com.example.commentpractice.dto.CommentReportDto;
 import com.example.commentpractice.dto.CommentRequest;
-import com.example.commentpractice.dto.CommentUpdateDto;
-import com.example.commentpractice.entity.comment.Comment;
+import com.example.commentpractice.dto.CommentResponse;
 import com.example.commentpractice.service.CommentService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -17,15 +18,10 @@ import java.util.List;
 public class CommentController {
     private final CommentService commentService;
 
-//    @GetMapping("/comments")
-//    public ResponseEntity<List<CommentResponse>> saveComment() {
-//        List<CommentResponse> comments = commentService.getComments();
-//        return ResponseEntity.created(URI.create("/comments")).body(comments);
-//    }
-
+    // 댓글 조회
     @GetMapping("/comments")
-    public ResponseEntity<List<Comment>> saveComment() {
-        List<Comment> comments = commentService.getComments();
+    public ResponseEntity<List<CommentResponse>> saveComment(@RequestParam("userId") Long userId) {
+        List<CommentResponse> comments = commentService.getComments(userId);
         return ResponseEntity.ok().body(comments);
     }
 
@@ -37,18 +33,32 @@ public class CommentController {
     }
 
     // 댓글 수정
-    @PatchMapping("/comments/{commentId}")
+    @PutMapping("/comments/{commentId}")
     public ResponseEntity<Long> updateComment(
-            @RequestBody CommentUpdateDto commentUpdateDto,
+            @RequestBody CommentRequest commentRequest,
             @PathVariable("commentId") Long commentId) {
-        commentService.updateComment(commentUpdateDto, commentId);
+        commentService.updateComment(commentRequest, commentId);
         return ResponseEntity.ok().build();
     }
 
+    // 댓글 신고
+    @PostMapping("/comments/{commentId}/report")
+    public ResponseEntity<Long> reportComment(
+            @RequestBody CommentReportDto commentReportDto,
+            @PathVariable("commentId") Long commentId
+    ) {
+        commentService.reportComment(commentReportDto, commentId);
+        return ResponseEntity.ok().build();
+    }
+
+
     // 댓글 삭제
     @DeleteMapping("/comments/{commentId}")
-    public ResponseEntity deleteComment(@PathVariable("commentId") Long commentId) {
-        commentService.deleteComment(commentId);
+    public ResponseEntity deleteComment(
+            @RequestBody CommentDeleteDto commentDeleteDto,
+            @PathVariable("commentId") Long commentId
+    ) {
+        commentService.deleteComment(commentDeleteDto, commentId);
         return ResponseEntity.ok().build();
     }
 
@@ -56,27 +66,28 @@ public class CommentController {
     @PostMapping("/comments/{commentId}/reply")
     public ResponseEntity<Long> saveReply(
             @RequestBody CommentRequest commentRequest,
-            @PathVariable("commentId") Long commentId) {
+            @PathVariable("commentId") Long commentId
+    ) {
         Long id = commentService.saveReply(commentRequest, commentId);
         return ResponseEntity.created(URI.create("/comment")).body(id);
     }
 
     // 대댓글 수정
-    @PatchMapping("/comments/{commentId}/reply/{replyId}")
+    @PutMapping("/comments/{commentId}/replies/{replyId}")
     public ResponseEntity updateReply (
-            @RequestBody CommentUpdateDto commentUpdateDto,
+            @RequestBody CommentRequest commentRequest,
             @PathVariable("commentId") Long commentId,
             @PathVariable("replyId") Long replyId) {
-        commentService.updateReply(commentUpdateDto, commentId);
+        commentService.updateReply(commentRequest, commentId, replyId);
         return ResponseEntity.ok().build();
     }
 
     // 대댓글 삭제
-    @DeleteMapping("/comments/{commentId}/reply/{replyId}")
+    @DeleteMapping("/comments/{commentId}/replies/{replyId}")
     public ResponseEntity deleteReply (
             @PathVariable("commentId") Long commentId,
             @PathVariable("replyId") Long replyId) {
-        commentService.deleteReply(commentId);
+        commentService.deleteReply(commentId, replyId);
         return ResponseEntity.ok().build();
     }
 }

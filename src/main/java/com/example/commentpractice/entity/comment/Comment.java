@@ -1,7 +1,9 @@
 package com.example.commentpractice.entity.comment;
 
-import com.example.commentpractice.entity.BaseEntity;
+import com.example.commentpractice.entity.BaseTimeEntity;
+import com.example.commentpractice.entity.report.Report;
 import com.example.commentpractice.entity.user.Member;
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -10,7 +12,8 @@ import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.DynamicInsert;
 
 import javax.persistence.*;
-import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Builder
@@ -19,29 +22,34 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @Table
 @DynamicInsert
-public class Comment extends BaseEntity {
+public class Comment extends BaseTimeEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     private String comment; // 댓글
 
-    private Boolean secretComment = true; // Boolean default 값 해결하기
+    @ColumnDefault("false")
+    private Boolean secret;
 
-    private Long parentCommentId = 0L; // 부모댓글이면 0, 대댓이면 부모댓글 id 를 넣기
+    @ColumnDefault("0L")
+    private Long parent; // 부모댓글이면 0, 대댓이면 부모댓글 id 를 넣기
 
-    @ColumnDefault("1")
-    private int deleteStatus; // default 가 안먹히는데요
+    private Long groupId; // 부모-> 자기 댓글 번호 / 자식->부모 댓글 번호
 
+    @ColumnDefault("0")
+    private Integer deleteStatus; // 삭제여부
+
+    // 부모 -> 자식 ( 역방향)
+    @JsonManagedReference
     @ManyToOne(targetEntity = Member.class)
     private Member member;
 
+    @OneToMany(targetEntity = Report.class)
+    List<Report> reports = new ArrayList<>();
+
     public void setMember(Member member){
         this.member = member;
-    }
-
-    public void setParentComment(Long commentId){
-        this.parentCommentId = commentId;
     }
 
     public void updateDeleteStatus(){
@@ -50,6 +58,5 @@ public class Comment extends BaseEntity {
 
     public void updateComment(String comment){
         this.comment = comment;
-        this.setCreated(LocalDateTime.now());
     }
 }

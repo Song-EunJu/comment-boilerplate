@@ -2,6 +2,8 @@ package com.example.commentpractice.entity.user;
 
 import com.example.commentpractice.entity.Role;
 import com.example.commentpractice.entity.comment.Comment;
+import com.example.commentpractice.entity.report.Report;
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -32,10 +34,16 @@ public class Member {
     @Column
     private String nickname;
 
-    @Column()
+    @Column
     @Enumerated(EnumType.STRING)
     private Role role;
 
+    @JsonBackReference
     @OneToMany(mappedBy = "member", targetEntity = Comment.class)
     private List<Comment> comments = new ArrayList<>(); // list 보다 set 이 좋다고 했는데 뭐엿지
+
+    @JsonBackReference
+    @OneToMany(mappedBy = "member", targetEntity = Report.class)
+    private List<Report> reports = new ArrayList<>();
+
 }

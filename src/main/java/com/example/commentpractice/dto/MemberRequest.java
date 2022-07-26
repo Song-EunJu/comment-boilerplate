@@ -15,13 +15,23 @@ public class MemberRequest {
     private String email;
     private String password;
     private String nickname;
+    private String role;
 
-    public Member toEntity(String encryptedPwd){
+    public Member toEntity(String encryptedPwd, String role){
         return Member.builder()
                 .email(email)
                 .password(encryptedPwd)
                 .nickname(nickname)
-                .role(Role.USER)
+                .role(role == null ? Role.USER : Role.valueOf(role))
+                .build();
+    }
+
+    public static Member toGuestEntity(String encryptedPwd, String nickname){
+        return Member.builder()
+                .email(null)
+                .password(encryptedPwd)
+                .nickname(nickname)
+                .role(Role.GUEST)
                 .build();
     }
 }
