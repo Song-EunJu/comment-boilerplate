@@ -37,8 +37,8 @@ public class Comment extends BaseTimeEntity {
 
     private Long depth;
 
-    @ColumnDefault("0")
-    private Integer deleteStatus; // 삭제여부
+    @ColumnDefault("false")
+    private Boolean deleteStatus; // 삭제여부
 
     // 부모 -> 자식 ( 역방향)
     @JsonManagedReference
@@ -46,14 +46,19 @@ public class Comment extends BaseTimeEntity {
     private Member member;
 
     @OneToMany(targetEntity = Report.class)
+//    @JsonBackReference
     List<Report> reports = new ArrayList<>();
+
+    @OneToMany(targetEntity = Comment.class)
+//    @JsonBackReference
+    List<Comment> replies = new ArrayList<>();
 
     public void setMember(Member member){
         this.member = member;
     }
 
     public void updateDeleteStatus(){
-        this.deleteStatus = 1;
+        this.deleteStatus = true;
     }
 
     public void setParentAndDepth(Long commentId, Long depth){
@@ -64,4 +69,14 @@ public class Comment extends BaseTimeEntity {
     public void updateComment(String comment){
         this.comment = comment;
     }
+
+    public void addReply(Comment reply){
+        replies.add(reply);
+    }
+
+    public void addReport(Report report){
+        reports.add(report);
+    }
+
+
 }

@@ -33,7 +33,7 @@ public class CommentService {
 
     // 댓글 삭제 시 권한 확인 메소드
     public void confirmDeleteAuth(Comment comment, Member member) {
-        if (comment.getMember().getId() != member.getId() && member.getRole() != Role.ADMIN) // 작성자가 아닌 경우
+        if (comment.getMember().getId() != member.getId() && member.getRole() != Role.ADMIN) // 작성자, 관리자가 아닌 경우
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "삭제 권한이 없습니다");
     }
 
@@ -53,25 +53,14 @@ public class CommentService {
 
     // 댓글 조회
     public List<CommentResponse> getComments(Long userId) {
-        // 삭제된 댓글은 '삭제된 댓글입니다' 라고 보여주기
-        commentRepository.findByParentId(1L);
-
+        Member member = memberService.findById(userId);
         List<CommentResponse> comments = commentRepository
                 .findAll()
                 .stream()
-                .map(CommentResponse::of)
+                .filter(comment -> comment.getDepth() == 0L)
+                .map(comment -> CommentResponse.of(comment, member))
                 .collect(Collectors.toList());
 
-        if(memberService.findById(userId).getRole() != Role.ADMIN) { // 관리자 권한 아닌 경우에만
-            comments.forEach(commentResponse -> {
-                if (commentResponse.getDeleteStatus() == 1) {
-                    commentResponse.setComment("삭제된 댓글입니다");
-                }
-                if (commentResponse.getSecret() == true) {
-                    commentResponse.setComment("비밀 댓글입니다");
-                }
-            });
-        }
         return comments;
     }
 
@@ -115,8 +104,12 @@ public class CommentService {
         String reason = commentReportDto.getReason();
         Member member = memberService.findById(commentReportDto.getUserId());
         Comment comment = this.findByCommentId(commentId);
+        System.out.println("comment.getComment() = " + comment.getComment());
         Report report = commentReportDto.toEntity(reason, member, comment);
-        reportRepository.save(report);
+        System.out.println("report.getReason().name() = " + report.getReason().name());
+        Report savedReport = reportRepository.save(report);
+        comment.addReport(savedReport);
+        commentRepository.save(comment);
     }
 
     // 대댓글 등록
@@ -127,6 +120,8 @@ public class CommentService {
         Comment comment = this.findByCommentId(commentId);
         reply.setParentAndDepth(commentId, comment.getDepth()+1);
         reply.setMember(member);
+        comment.addReply(reply);
+
         return commentRepository.save(reply).getId();
     }
 

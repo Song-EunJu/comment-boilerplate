@@ -15,6 +15,7 @@ public class CommentRequest {
         return Comment.builder()
                 .comment(comment)
                 .secret(secret)
+                .depth(0L)
                 .build();
     }
 }

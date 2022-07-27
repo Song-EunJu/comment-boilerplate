@@ -20,7 +20,7 @@ public class CommentController {
 
     // 댓글 조회
     @GetMapping("/comments")
-    public ResponseEntity<List<CommentResponse>> saveComment(@RequestParam("userId") Long userId) {
+    public ResponseEntity<List<CommentResponse>> getComments(@RequestParam("userId") Long userId) {
         List<CommentResponse> comments = commentService.getComments(userId);
         return ResponseEntity.ok().body(comments);
     }
@@ -34,21 +34,21 @@ public class CommentController {
 
     // 댓글 수정
     @PutMapping("/comments/{commentId}")
-    public ResponseEntity<Long> updateComment(
+    public ResponseEntity<String> updateComment(
             @RequestBody CommentRequest commentRequest,
             @PathVariable("commentId") Long commentId) {
         commentService.updateComment(commentRequest, commentId);
-        return ResponseEntity.ok().build();
+        return ResponseEntity.ok().body("댓글 수정 완료");
     }
 
     // 댓글 신고
     @PostMapping("/comments/{commentId}/report")
-    public ResponseEntity<Long> reportComment(
+    public ResponseEntity<String> reportComment(
             @RequestBody CommentReportDto commentReportDto,
             @PathVariable("commentId") Long commentId
     ) {
         commentService.reportComment(commentReportDto, commentId);
-        return ResponseEntity.ok().build();
+        return ResponseEntity.ok().body("댓글 신고 완료");
     }
 
 
@@ -59,7 +59,7 @@ public class CommentController {
             @PathVariable("commentId") Long commentId
     ) {
         commentService.deleteComment(commentDeleteDto, commentId);
-        return ResponseEntity.ok().build();
+        return ResponseEntity.ok().body("댓글 삭제 완료");
     }
 
     // 대댓글 등록
@@ -69,7 +69,7 @@ public class CommentController {
             @PathVariable("commentId") Long commentId
     ) {
         Long id = commentService.saveReply(commentRequest, commentId);
-        return ResponseEntity.created(URI.create("/comment/{commentId}")).body(id);
+        return ResponseEntity.created(URI.create("/comment/"+id)).body(id);
     }
 
     // 대댓글 수정
@@ -79,7 +79,7 @@ public class CommentController {
             @PathVariable("commentId") Long commentId,
             @PathVariable("replyId") Long replyId) {
         commentService.updateReply(commentRequest, commentId, replyId);
-        return ResponseEntity.ok().build();
+        return ResponseEntity.ok().body("댓글 수정 완료");
     }
 
     // 대댓글 삭제
@@ -88,6 +88,6 @@ public class CommentController {
             @PathVariable("commentId") Long commentId,
             @PathVariable("replyId") Long replyId) {
         commentService.deleteReply(commentId, replyId);
-        return ResponseEntity.ok().build();
+        return ResponseEntity.ok().body("댓글 삭제 완료");
     }
 }
