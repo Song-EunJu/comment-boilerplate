@@ -1,5 +1,6 @@
 package com.example.commentpractice.entity.comment;
 
+import com.example.commentpractice.dto.CommentRequest;
 import com.example.commentpractice.entity.BaseTimeEntity;
 import com.example.commentpractice.entity.report.Report;
 import com.example.commentpractice.entity.user.Member;
@@ -46,11 +47,9 @@ public class Comment extends BaseTimeEntity {
     private Member member;
 
     @OneToMany(targetEntity = Report.class)
-//    @JsonBackReference
     List<Report> reports = new ArrayList<>();
 
     @OneToMany(targetEntity = Comment.class)
-//    @JsonBackReference
     List<Comment> replies = new ArrayList<>();
 
     public void setMember(Member member){
@@ -66,8 +65,11 @@ public class Comment extends BaseTimeEntity {
         this.depth = depth;
     }
 
-    public void updateComment(String comment){
-        this.comment = comment;
+    public void updateComment(CommentRequest commentRequest){
+        if(commentRequest.getComment() != null)
+            this.comment = commentRequest.getComment();
+        if(commentRequest.getSecret() != null)
+            this.secret = commentRequest.getSecret();
     }
 
     public void addReply(Comment reply){

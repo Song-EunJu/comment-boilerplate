@@ -20,8 +20,11 @@ public class CommentController {
 
     // 댓글 조회
     @GetMapping("/comments")
-    public ResponseEntity<List<CommentResponse>> getComments(@RequestParam("userId") Long userId) {
-        List<CommentResponse> comments = commentService.getComments(userId);
+    public ResponseEntity<List<CommentResponse>> getComments(
+            @RequestParam("userId") Long userId,
+            @RequestParam("allParent") Boolean allParent
+    ) {
+        List<CommentResponse> comments = commentService.getComments(userId, allParent);
         return ResponseEntity.ok().body(comments);
     }
 
@@ -70,24 +73,5 @@ public class CommentController {
     ) {
         Long id = commentService.saveReply(commentRequest, commentId);
         return ResponseEntity.created(URI.create("/comment/"+id)).body(id);
-    }
-
-    // 대댓글 수정
-    @PutMapping("/comments/{commentId}/replies/{replyId}")
-    public ResponseEntity updateReply (
-            @RequestBody CommentRequest commentRequest,
-            @PathVariable("commentId") Long commentId,
-            @PathVariable("replyId") Long replyId) {
-        commentService.updateReply(commentRequest, commentId, replyId);
-        return ResponseEntity.ok().body("댓글 수정 완료");
-    }
-
-    // 대댓글 삭제
-    @DeleteMapping("/comments/{commentId}/replies/{replyId}")
-    public ResponseEntity deleteReply (
-            @PathVariable("commentId") Long commentId,
-            @PathVariable("replyId") Long replyId) {
-        commentService.deleteReply(commentId, replyId);
-        return ResponseEntity.ok().body("댓글 삭제 완료");
     }
 }
