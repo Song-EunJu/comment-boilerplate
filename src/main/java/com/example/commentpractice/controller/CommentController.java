@@ -4,6 +4,7 @@ import com.example.commentpractice.dto.CommentDeleteDto;
 import com.example.commentpractice.dto.CommentReportDto;
 import com.example.commentpractice.dto.CommentRequest;
 import com.example.commentpractice.dto.CommentResponse;
+import com.example.commentpractice.entity.comment.Comment;
 import com.example.commentpractice.service.CommentService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -17,6 +18,12 @@ import java.util.List;
 @RequiredArgsConstructor
 public class CommentController {
     private final CommentService commentService;
+
+    @GetMapping("/comments2")
+    public ResponseEntity<List<Comment>> getComments() {
+        List<Comment> comments = commentService.findAll();
+        return ResponseEntity.ok().body(comments);
+    }
 
     // 댓글 조회
     @GetMapping("/comments")

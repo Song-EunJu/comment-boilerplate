@@ -16,7 +16,9 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -57,24 +59,26 @@ public class CommentService {
         Member member = memberService.findById(userId); // 조회하려는 사람
 
         List<CommentResponse> comments;
-        if(allParent == true) { // 모든 부모 댓글에 다 비댓 보이게
+        if(allParent == false){
             comments = commentRepository
                     .findAll()
                     .stream()
+//                    .filter(comment -> comment.getDepth() == 0L)
                     .map(comment -> CommentResponse.of(comment, member,
-                            commentRepository.findById(comment.getParent()).orElse(comment)))
-                    .filter(comment -> comment.getDepth() == 0L)
+                            Optional.of(commentRepository.findById(comment.getParent()).orElse(comment))))
                     .collect(Collectors.toList());
-        } else { // 바로 위 댓글에만 비댓 보이게
-            comments = commentRepository
-                    .findAll()
-                    .stream()
-                    .map(comment -> CommentResponse.of(comment, member,
-                            commentRepository.findById(comment.getParent()).orElse(comment)))
-                    .filter(comment -> comment.getDepth() == 0L)
-                    .collect(Collectors.toList());
+            return comments;
         }
-        return comments;
+        else
+            return new ArrayList<>();
+    }
+
+    public List<Comment> findAll(){
+        return commentRepository
+                .findAll()
+                .stream()
+                .filter(comment -> comment.getDepth() == 0L)
+                .collect(Collectors.toList());
     }
 
     // 댓글 등록
@@ -136,11 +140,17 @@ public class CommentService {
     // 대댓글 등록
     public Long saveReply(CommentRequest commentRequest, Long commentId) {
         Comment reply = commentRequest.toEntity();
-        Member member = memberService.findById(commentRequest.getUserId());
+        if(commentRequest.getUserId() == null) { // 가입하지 않은 경우
+            Member member = memberService.saveGuest(commentRequest);
+            reply.setMember(member);
+        }
+        else {
+            Member member = memberService.findById(commentRequest.getUserId());
+            reply.setMember(member);
+        }
 
+        reply.setParentAndDepth(commentId, reply.getDepth()+1);
         Comment comment = this.findByCommentId(commentId);
-        reply.setParentAndDepth(commentId, comment.getDepth()+1);
-        reply.setMember(member);
         comment.addReply(reply);
 
         return commentRepository.save(reply).getId();
