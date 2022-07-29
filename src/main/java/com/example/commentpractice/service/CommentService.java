@@ -16,7 +16,6 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -27,9 +26,14 @@ public class CommentService {
     private final CommentRepository commentRepository;
     private final ReportRepository reportRepository;
     private final MemberService memberService;
-    private final CommentResponse commentResponse;
 
     // 댓글 수정 삭제 시 권한 확인 메소드
+    public Comment findById(Long id){
+        return commentRepository.findById(id).orElseThrow(() -> {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "해당하는 댓글 번호가 없습니다");
+        });
+    }
+
     public void confirmUpdateAuth(Comment comment, Member member) {
         if (comment.getMember().getId() != member.getId()) // 작성자가 아닌 경우
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "수정 권한이 없습니다");
@@ -58,20 +62,20 @@ public class CommentService {
     public List<CommentResponse> getComments(Long userId, Boolean allParent) {
         Member member = memberService.findById(userId); // 조회하려는 사람
 
-        List<CommentResponse> comments;
-        if(allParent == false){
-            comments = commentRepository
+        if(allParent) {
+            return commentRepository
                     .findAll()
                     .stream()
-                    .map(comment -> commentResponse.of(comment, member,
-                            commentRepository.findById(comment.getParent())))
+                    .map(comment -> CommentResponse.of(comment, member, true))
                     .filter(comment -> comment.getDepth() == 0L)
                     .collect(Collectors.toList());
-
-            return comments;
         }
-        else
-            return new ArrayList<>();
+        return commentRepository
+                .findAll()
+                .stream()
+                .map(comment -> CommentResponse.of(comment, member, false))
+                .filter(comment -> comment.getDepth() == 0L)
+                .collect(Collectors.toList());
     }
 
     public List<Comment> findAll(){
@@ -88,13 +92,15 @@ public class CommentService {
        if(commentRequest.getUserId() == null){ // 가입하지 않은 경우
             Member member = memberService.saveGuest(commentRequest);
             comment.setMember(member);
-            comment.setParentAndDepth(0L, 0L);
+            comment.setParentAndDepth(comment, 0L);
        }
        else {
            Member member = memberService.findById(commentRequest.getUserId());
            comment.setMember(member);
        }
-        return commentRepository.save(comment).getId();
+        Comment savedComment = commentRepository.save(comment);
+        savedComment.setParentComment(savedComment); // 저장하고 나서 parent 지정해주기 위해 한번더 세팅
+        return commentRepository.save(savedComment).getId();
     }
 
     // 댓글 수정
@@ -149,8 +155,8 @@ public class CommentService {
             Member member = memberService.findById(commentRequest.getUserId());
             reply.setMember(member);
         }
-
-        reply.setParentAndDepth(commentId, reply.getDepth()+1);
+        Comment parent = this.findById(commentId);
+        reply.setParentAndDepth(parent, reply.getDepth()+1);
         Comment comment = this.findByCommentId(commentId);
         comment.addReply(reply);
 
