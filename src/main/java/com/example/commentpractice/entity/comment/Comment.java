@@ -80,5 +80,17 @@ public class Comment extends BaseTimeEntity {
         reports.add(report);
     }
 
+    @Override
+    public String toString() {
+        return "Comment{" +
+                "id=" + id +
+                ", comment='" + comment + '\'' +
+                ", secret=" + secret +
+                ", parent=" + parent +
+                ", depth=" + depth +
+                ", deleteStatus=" + deleteStatus +
+                ", member=" + member +
 
+                '}';
+    }
 }

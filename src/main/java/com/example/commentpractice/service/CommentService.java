@@ -18,7 +18,6 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -28,6 +27,7 @@ public class CommentService {
     private final CommentRepository commentRepository;
     private final ReportRepository reportRepository;
     private final MemberService memberService;
+    private final CommentResponse commentResponse;
 
     // 댓글 수정 삭제 시 권한 확인 메소드
     public void confirmUpdateAuth(Comment comment, Member member) {
@@ -63,10 +63,11 @@ public class CommentService {
             comments = commentRepository
                     .findAll()
                     .stream()
-//                    .filter(comment -> comment.getDepth() == 0L)
-                    .map(comment -> CommentResponse.of(comment, member,
-                            Optional.of(commentRepository.findById(comment.getParent()).orElse(comment))))
+                    .map(comment -> commentResponse.of(comment, member,
+                            commentRepository.findById(comment.getParent())))
+                    .filter(comment -> comment.getDepth() == 0L)
                     .collect(Collectors.toList());
+
             return comments;
         }
         else
