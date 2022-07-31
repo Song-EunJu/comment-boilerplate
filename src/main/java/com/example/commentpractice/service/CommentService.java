@@ -58,7 +58,6 @@ public class CommentService {
         });
     }
 
-    // 댓글 조회 - 바로 위 부모댓글만 자식 비댓 확인할 수 있는 경우
     public List<CommentResponse> getComments(Long userId, Boolean allParent) {
         Member member = memberService.findById(userId); // 조회하려는 사람
 
@@ -105,7 +104,6 @@ public class CommentService {
             Member member = memberService.findById(commentRequest.getUserId());
             confirmUpdateAuth(comment, member);
         }
-
         comment.updateComment(commentRequest);
         commentRepository.save(comment);
         // select, update 각각 1번
@@ -139,14 +137,13 @@ public class CommentService {
     // 대댓글 등록
     public Long saveReply(CommentRequest commentRequest, Long commentId) {
         Comment reply = commentRequest.toEntity();
-        if(commentRequest.getUserId() == null) { // 가입하지 않은 경우
-            Member member = memberService.saveGuest(commentRequest);
-            reply.setMember(member);
-        }
-        else {
-            Member member = memberService.findById(commentRequest.getUserId());
-            reply.setMember(member);
-        }
+        Member member;
+        if(commentRequest.getUserId() == null) // 가입하지 않은 경우
+            member = memberService.saveGuest(commentRequest);
+        else
+            member = memberService.findById(commentRequest.getUserId());
+
+        reply.setMember(member);
         Comment parent = this.findById(commentId);
         reply.setParentAndDepth(parent, reply.getDepth()+1);
         Comment comment = this.findByCommentId(commentId);

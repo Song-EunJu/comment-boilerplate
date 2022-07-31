@@ -34,7 +34,7 @@ public class Comment extends BaseTimeEntity {
     private Boolean secret;
 
     @OneToOne
-    private Comment parent; // 부모댓글이면 0, 대댓이면 부모댓글 id 를 넣기
+    private Comment parent; // 부모댓글이면 자기자신, 대댓이면 부모댓글 comment
 
     private Long depth;
 
@@ -52,49 +52,35 @@ public class Comment extends BaseTimeEntity {
     @OneToMany(targetEntity = Comment.class)
     List<Comment> replies = new ArrayList<>();
 
-    public void setMember(Member member){
+    public void setMember(Member member) {
         this.member = member;
     }
 
-    public void setParentComment(Comment comment){
+    public void setParentComment(Comment comment) {
         this.parent = comment;
     }
 
-    public void updateDeleteStatus(){
+    public void updateDeleteStatus() {
         this.deleteStatus = true;
     }
 
-    public void setParentAndDepth(Comment parent, Long depth){
+    public void setParentAndDepth(Comment parent, Long depth) {
         this.parent = parent;
         this.depth = depth;
     }
 
-    public void updateComment(CommentRequest commentRequest){
-        if(commentRequest.getComment() != null)
+    public void updateComment(CommentRequest commentRequest) {
+        if (commentRequest.getComment() != null)
             this.comment = commentRequest.getComment();
-        if(commentRequest.getSecret() != null)
+        if (commentRequest.getSecret() != null)
             this.secret = commentRequest.getSecret();
     }
 
-    public void addReply(Comment reply){
+    public void addReply(Comment reply) {
         replies.add(reply);
     }
 
-    public void addReport(Report report){
+    public void addReport(Report report) {
         reports.add(report);
-    }
-
-    @Override
-    public String toString() {
-        return "Comment{" +
-                "id=" + id +
-                ", comment='" + comment + '\'' +
-                ", secret=" + secret +
-                ", parent=" + parent +
-                ", depth=" + depth +
-                ", deleteStatus=" + deleteStatus +
-                ", member=" + member +
-
-                '}';
     }
 }
