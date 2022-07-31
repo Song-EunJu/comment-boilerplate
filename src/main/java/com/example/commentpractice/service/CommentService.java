@@ -62,18 +62,10 @@ public class CommentService {
     public List<CommentResponse> getComments(Long userId, Boolean allParent) {
         Member member = memberService.findById(userId); // 조회하려는 사람
 
-        if(allParent) {
-            return commentRepository
-                    .findAll()
-                    .stream()
-                    .map(comment -> CommentResponse.of(comment, member, true))
-                    .filter(comment -> comment.getDepth() == 0L)
-                    .collect(Collectors.toList());
-        }
         return commentRepository
                 .findAll()
                 .stream()
-                .map(comment -> CommentResponse.of(comment, member, false))
+                .map(comment -> CommentResponse.of(comment, member, allParent))
                 .filter(comment -> comment.getDepth() == 0L)
                 .collect(Collectors.toList());
     }
