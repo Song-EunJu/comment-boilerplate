@@ -33,8 +33,8 @@ public class Comment extends BaseTimeEntity {
     @ColumnDefault("false")
     private Boolean secret;
 
-    @ColumnDefault("0")
-    private Long parent; // 부모댓글이면 0, 대댓이면 부모댓글 id 를 넣기
+    @OneToOne
+    private Comment parent; // 부모댓글이면 0, 대댓이면 부모댓글 id 를 넣기
 
     private Long depth;
 
@@ -56,12 +56,16 @@ public class Comment extends BaseTimeEntity {
         this.member = member;
     }
 
+    public void setParentComment(Comment comment){
+        this.parent = comment;
+    }
+
     public void updateDeleteStatus(){
         this.deleteStatus = true;
     }
 
-    public void setParentAndDepth(Long commentId, Long depth){
-        this.parent = commentId;
+    public void setParentAndDepth(Comment parent, Long depth){
+        this.parent = parent;
         this.depth = depth;
     }
 
