@@ -3,12 +3,14 @@ package com.example.commentpractice.service;
 import com.example.commentpractice.dto.CommentDeleteDto;
 import com.example.commentpractice.dto.CommentReportDto;
 import com.example.commentpractice.dto.CommentRequest;
-import com.example.commentpractice.dto.CommentResponse;
-import com.example.commentpractice.entity.Role;
 import com.example.commentpractice.entity.comment.Comment;
+import com.example.commentpractice.entity.comment.CommentReply;
 import com.example.commentpractice.entity.report.Report;
 import com.example.commentpractice.entity.user.Member;
+import com.example.commentpractice.entity.user.Role;
+import com.example.commentpractice.repository.CommentReplyRepository;
 import com.example.commentpractice.repository.CommentRepository;
+import com.example.commentpractice.repository.ReplyRepository;
 import com.example.commentpractice.repository.ReportRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -17,7 +19,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -26,6 +27,8 @@ public class CommentService {
     private final CommentRepository commentRepository;
     private final ReportRepository reportRepository;
     private final MemberService memberService;
+    private final CommentReplyRepository commentReplyRepository;
+    private final ReplyRepository replyRepository;
 
     // 댓글 수정 삭제 시 권한 확인 메소드
     public Comment findById(Long id){
@@ -58,39 +61,36 @@ public class CommentService {
         });
     }
 
-    public List<CommentResponse> getComments(Long userId, Boolean allParent) {
+//    public List<CommentResponse> getComments(Long userId, Boolean allParent) {
+//        Member member = memberService.findById(userId); // 조회하려는 사람
+//        return commentRepository
+//                .findAll(member)
+//                .stream()
+//                .map(comment -> CommentResponse.of(comment, member, allParent))
+//                .collect(Collectors.toList());
+//    }
+
+    public List<Comment> getComments(Long userId, Boolean allParent) {
         Member member = memberService.findById(userId); // 조회하려는 사람
-
-        return commentRepository
-                .findAll()
-                .stream()
-                .map(comment -> CommentResponse.of(comment, member, allParent))
-                .filter(comment -> comment.getDepth() == 0L)
-                .collect(Collectors.toList());
-    }
-
-    public List<Comment> findAll(){
-        return commentRepository
-                .findAll()
-                .stream()
-                .filter(comment -> comment.getDepth() == 0L)
-                .collect(Collectors.toList());
+        List<Comment> list = commentRepository.findAll(member);
+        // select 문 6개
+        return list;
     }
 
     // 댓글 등록
     public Long saveComment(CommentRequest commentRequest) {
        Comment comment = commentRequest.toEntity();
-       if(commentRequest.getUserId() == null){ // 가입하지 않은 경우
+       if(commentRequest.getUserId() == null){ // 가입하지 않고 익명댓글 다는 경우
             Member member = memberService.saveGuest(commentRequest);
             comment.setMember(member);
-            comment.setParentAndDepth(comment, 0L);
        }
        else {
            Member member = memberService.findById(commentRequest.getUserId());
            comment.setMember(member);
        }
         Comment savedComment = commentRepository.save(comment);
-        savedComment.setParentComment(savedComment); // 저장하고 나서 parent 지정해주기 위해 한번더 세팅
+        // 댓글은 parent 저장 안함
+        //        savedComment.setParentComment(savedComment); // 저장하고 나서 parent 지정해주기 위해 한번더 세팅
         return commentRepository.save(savedComment).getId();
     }
 
@@ -105,8 +105,7 @@ public class CommentService {
             confirmUpdateAuth(comment, member);
         }
         comment.updateComment(commentRequest);
-        commentRepository.save(comment);
-        // select, update 각각 1번
+        commentRepository.save(comment); // select, update 각각 1번씩 일어남
     }
 
     // 댓글 삭제
@@ -144,11 +143,10 @@ public class CommentService {
             member = memberService.findById(commentRequest.getUserId());
 
         reply.setMember(member);
-        Comment parent = this.findById(commentId);
-        reply.setParentAndDepth(parent, reply.getDepth()+1);
-        Comment comment = this.findByCommentId(commentId);
-        comment.addReply(reply);
-
-        return commentRepository.save(reply).getId();
+        Comment savedReply = commentRepository.save(reply);
+        // comment_id, reply_id 를 저장하는 것으로 변경
+        CommentReply commentReply = new CommentReply(commentId, savedReply.getId());
+        commentReplyRepository.save(commentReply);
+        return savedReply.getId();
     }
 }

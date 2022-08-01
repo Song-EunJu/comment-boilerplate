@@ -6,6 +6,4 @@ import lombok.Getter;
 public class ReplyRequest {
     private String reply;
     private Long commentId;
-
-
 }

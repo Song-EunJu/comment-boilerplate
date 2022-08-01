@@ -3,7 +3,6 @@ package com.example.commentpractice.controller;
 import com.example.commentpractice.dto.CommentDeleteDto;
 import com.example.commentpractice.dto.CommentReportDto;
 import com.example.commentpractice.dto.CommentRequest;
-import com.example.commentpractice.dto.CommentResponse;
 import com.example.commentpractice.entity.comment.Comment;
 import com.example.commentpractice.service.CommentService;
 import lombok.RequiredArgsConstructor;
@@ -19,19 +18,20 @@ import java.util.List;
 public class CommentController {
     private final CommentService commentService;
 
-    @GetMapping("/comments2")
-    public ResponseEntity<List<Comment>> getComments() {
-        List<Comment> comments = commentService.findAll();
-        return ResponseEntity.ok().body(comments);
-    }
+    // 댓글 조회 (DTO 사용)
+//    @GetMapping("/comments")
+//    public ResponseEntity<List<CommentResponse>> getComments(
+//            @RequestParam("userId") Long userId,
+//            @RequestParam("allParent") Boolean allParent) {
+//        List<CommentResponse> comments = commentService.getComments(userId, allParent);
+//        return ResponseEntity.ok().body(comments);
+//    }
 
-    // 댓글 조회
     @GetMapping("/comments")
-    public ResponseEntity<List<CommentResponse>> getComments(
+    public ResponseEntity<List<Comment>> getComments(
             @RequestParam("userId") Long userId,
-            @RequestParam("allParent") Boolean allParent
-    ) {
-        List<CommentResponse> comments = commentService.getComments(userId, allParent);
+            @RequestParam("allParent") Boolean allParent) {
+        List<Comment> comments = commentService.getComments(userId, allParent);
         return ResponseEntity.ok().body(comments);
     }
 
@@ -55,19 +55,16 @@ public class CommentController {
     @PostMapping("/comments/{commentId}/report")
     public ResponseEntity<String> reportComment(
             @RequestBody CommentReportDto commentReportDto,
-            @PathVariable("commentId") Long commentId
-    ) {
+            @PathVariable("commentId") Long commentId) {
         commentService.reportComment(commentReportDto, commentId);
         return ResponseEntity.ok().body("댓글 신고 완료");
     }
-
 
     // 댓글 삭제
     @DeleteMapping("/comments/{commentId}")
     public ResponseEntity deleteComment(
             @RequestBody CommentDeleteDto commentDeleteDto,
-            @PathVariable("commentId") Long commentId
-    ) {
+            @PathVariable("commentId") Long commentId) {
         commentService.deleteComment(commentDeleteDto, commentId);
         return ResponseEntity.ok().body("댓글 삭제 완료");
     }
@@ -76,8 +73,7 @@ public class CommentController {
     @PostMapping("/comments/{commentId}")
     public ResponseEntity<Long> saveReply(
             @RequestBody CommentRequest commentRequest,
-            @PathVariable("commentId") Long commentId
-    ) {
+            @PathVariable("commentId") Long commentId) {
         Long id = commentService.saveReply(commentRequest, commentId);
         return ResponseEntity.created(URI.create("/comment/"+id)).body(id);
     }
