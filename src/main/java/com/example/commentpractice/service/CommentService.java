@@ -3,6 +3,7 @@ package com.example.commentpractice.service;
 import com.example.commentpractice.dto.CommentDeleteDto;
 import com.example.commentpractice.dto.CommentReportDto;
 import com.example.commentpractice.dto.CommentRequest;
+import com.example.commentpractice.dto.CommentResponse;
 import com.example.commentpractice.entity.comment.Comment;
 import com.example.commentpractice.entity.comment.CommentReply;
 import com.example.commentpractice.entity.report.Report;
@@ -10,7 +11,6 @@ import com.example.commentpractice.entity.user.Member;
 import com.example.commentpractice.entity.user.Role;
 import com.example.commentpractice.repository.CommentReplyRepository;
 import com.example.commentpractice.repository.CommentRepository;
-import com.example.commentpractice.repository.ReplyRepository;
 import com.example.commentpractice.repository.ReportRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -18,7 +18,9 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -28,7 +30,6 @@ public class CommentService {
     private final ReportRepository reportRepository;
     private final MemberService memberService;
     private final CommentReplyRepository commentReplyRepository;
-    private final ReplyRepository replyRepository;
 
     // 댓글 수정 삭제 시 권한 확인 메소드
     public Comment findById(Long id){
@@ -63,18 +64,61 @@ public class CommentService {
 
 //    public List<CommentResponse> getComments(Long userId, Boolean allParent) {
 //        Member member = memberService.findById(userId); // 조회하려는 사람
+//
+//        /*
+//            findAll() 까지는 문제가 없음.
+//            근데 댓글의 대댓글을 계속 select 해오는 것이 문제 -> jpa n+1 문제 (따라서 fetch join을 써야 함)
+//            따라서 서비스 단에서 계층구조를 짜라는 말
+//        */
 //        return commentRepository
-//                .findAll(member)
+//                .findAll()
 //                .stream()
 //                .map(comment -> CommentResponse.of(comment, member, allParent))
 //                .collect(Collectors.toList());
 //    }
 
-    public List<Comment> getComments(Long userId, Boolean allParent) {
+    public List<CommentResponse> getComments(Long userId, Boolean allParent) {
         Member member = memberService.findById(userId); // 조회하려는 사람
-        List<Comment> list = commentRepository.findAll(member);
-        // select 문 6개
-        return list;
+        List<CommentReply> commentReply = commentReplyRepository
+                .findAll()
+                .stream()
+                .filter(cp -> cp.getParent() == true) // 부모 댓글인 애들로필터링해서
+                .collect(Collectors.toList());
+
+        List<CommentResponse> finalList = new ArrayList<>(); // 이거 고대로 리턴할거임
+
+        for (CommentReply cr : commentReply) { // 얘네가 finalList.add(commentResponse) 바로 아래에 들어가는 댓글
+            Comment comment = commentRepository.findById(cr.getCommentId()).get();// 1번 댓글
+            getReplies(comment, cr); // 1번 댓글의 대댓글 목록들을 가져오기 위함.
+            // 1번 댓글의 대댓글 목록들로 점점 파고들면서 대댓글이 업을 때까지 돌림
+
+//            finalList.add(CommentResponse.of(comment, ));
+            // 여기서 1번 댓글에  대댓글까지 딸린 comment 하나를 commentResponse로 만들어서 추가
+            // 대댓글 목록 다 추가한 후 최종적으로 finalList에 add
+        }
+        return finalList;
+    }
+
+    public List<CommentResponse> getReplies(Comment parent, CommentReply cr){
+
+        while (true) { // 해당 commentId 와 같은 것이 parentId 에 없을 때까지 돈다
+            List<CommentResponse> list = new ArrayList<>();
+            Comment comment = commentRepository.findById(cr.getCommentId()).get(); // 1번 댓글
+            List<CommentReply> crs = commentReplyRepository.findByParentId(comment.getId()); // 1번댓글을 부모로 갖는 자식댓글리스트
+            // 리스트에 값이 없는데 꺼낼수잇나/???
+
+            for(CommentReply commentReply : crs) {
+                if (commentReply == null) { // 하나 대댓글의 끝가지 온 것
+                    List<CommentResponse> commentResponses = new ArrayList<>();
+                    list.add(CommentResponse.of(parent, new ArrayList<>()));
+                    return commentResponses;
+                }
+                List<CommentResponse> response = getReplies(comment, commentReply);
+//                list.add(CommentResponse.of(comment, response));
+                list.get(0).getReplies().add(CommentResponse.of(comment, response)); //???
+
+            }
+        }
     }
 
     // 댓글 등록
@@ -89,8 +133,9 @@ public class CommentService {
            comment.setMember(member);
        }
         Comment savedComment = commentRepository.save(comment);
-        // 댓글은 parent 저장 안함
-        //        savedComment.setParentComment(savedComment); // 저장하고 나서 parent 지정해주기 위해 한번더 세팅
+        CommentReply commentReply = new CommentReply(savedComment.getId(), 0L, true);
+        commentReplyRepository.save(commentReply);
+
         return commentRepository.save(savedComment).getId();
     }
 
@@ -144,9 +189,11 @@ public class CommentService {
 
         reply.setMember(member);
         Comment savedReply = commentRepository.save(reply);
+
         // comment_id, reply_id 를 저장하는 것으로 변경
-        CommentReply commentReply = new CommentReply(commentId, savedReply.getId());
+        CommentReply commentReply = new CommentReply(commentId, savedReply.getId(), false);
         commentReplyRepository.save(commentReply);
+
         return savedReply.getId();
     }
 }

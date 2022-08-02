@@ -29,7 +29,7 @@ public class Comment extends BaseTimeEntity {
     @Column(name = "commentId")
     private Long id;
 
-    private String comment; // 댓글
+    private String comment; //  댓글
 
     @ColumnDefault("false")
     private Boolean secret;

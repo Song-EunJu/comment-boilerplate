@@ -2,7 +2,6 @@ package com.example.commentpractice.dto;
 
 import com.example.commentpractice.entity.comment.Comment;
 import com.example.commentpractice.entity.report.Report;
-import com.example.commentpractice.entity.user.Member;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
@@ -20,8 +19,9 @@ public class CommentResponse {
     private Boolean deleteStatus; // 삭제여부
     private Boolean secret;
     private List<Report> reports;
+    private List<CommentResponse> replies;
 
-    public static CommentResponse of(Comment comment, Member member, Boolean option) {
+    public static CommentResponse of(Comment comment, List<CommentResponse> replies) {
         return CommentResponse.builder()
                 .commentId(comment.getId())
                 .userId(comment.getMember().getId())
@@ -29,8 +29,10 @@ public class CommentResponse {
                 .deleteStatus(comment.getDeleteStatus())
                 .secret(comment.getSecret())
                 .reports(comment.getReports())
+                .replies(replies)
                 .build();
     }
+
 }
 
 //    public static String getChangedComment(Comment comment, Member member, Boolean option) {
@@ -50,7 +52,7 @@ public class CommentResponse {
 //                                while (true) { // 최상위 부모 댓글이 아닐 때까지
 //                                    if (comment.getMember().getId() == memberId) { // 부모댓글 작성자 == 조회자
 //                                        return comment.getComment();
-//                                    } else { // 부모댓글 작성자 != 조회자인 경우
+//                                    } ele { // 부모댓글 작성자 != 조회자인 경우
 //                                        if (comment.getParent() == comment) { // 최상위 댓글까지 왔는데도 return 안됐으니까 비댓
 //                                            return "비밀 댓글입니다";
 //                                        }
@@ -77,7 +79,7 @@ public class CommentResponse {
 //    public static List<CommentResponse> toDtoList(List<Comment> replies, Member member, Boolean option) {
 //        return replies
 //                .stream()
-//                .map(comment -> of(comment, member, option))
+//                .map(comment -> of(comment, member, option, replies))
 //                .collect(Collectors.toList());
 //    }
 //

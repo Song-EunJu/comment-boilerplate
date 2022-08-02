@@ -19,17 +19,18 @@ public class CommentReply {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-
-    // Comment 테이블과 외래키 연결
     @JoinColumn(foreignKey = @ForeignKey(name = "commentId"))
-    private Long commentId;
+    private Long commentId; // parentId
 
     @JoinColumn(foreignKey = @ForeignKey(name = "commentId"))
-    private Long replyId;
+    private Long parentId;
+
+    private Boolean parent;
 
     @Builder
-    public CommentReply(Long commentId, Long replyId) {
+    public CommentReply(Long commentId, Long parentId, Boolean parentStatus) {
         this.commentId = commentId;
-        this.replyId = replyId;
+        this.parentId = parentId;
+        this.parent = parentStatus;
     }
 }

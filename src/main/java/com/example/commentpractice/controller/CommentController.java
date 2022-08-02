@@ -3,7 +3,7 @@ package com.example.commentpractice.controller;
 import com.example.commentpractice.dto.CommentDeleteDto;
 import com.example.commentpractice.dto.CommentReportDto;
 import com.example.commentpractice.dto.CommentRequest;
-import com.example.commentpractice.entity.comment.Comment;
+import com.example.commentpractice.dto.CommentResponse;
 import com.example.commentpractice.service.CommentService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -19,21 +19,21 @@ public class CommentController {
     private final CommentService commentService;
 
     // 댓글 조회 (DTO 사용)
-//    @GetMapping("/comments")
-//    public ResponseEntity<List<CommentResponse>> getComments(
-//            @RequestParam("userId") Long userId,
-//            @RequestParam("allParent") Boolean allParent) {
-//        List<CommentResponse> comments = commentService.getComments(userId, allParent);
-//        return ResponseEntity.ok().body(comments);
-//    }
-
-    @GetMapping("/comments")
-    public ResponseEntity<List<Comment>> getComments(
+    @GetMapping("/comments")0
+    public ResponseEntity<List<CommentResponse>> getComments(
             @RequestParam("userId") Long userId,
             @RequestParam("allParent") Boolean allParent) {
-        List<Comment> comments = commentService.getComments(userId, allParent);
+        List<CommentResponse> comments = commentService.getComments(userId, allParent);
         return ResponseEntity.ok().body(comments);
     }
+
+//    @GetMapping("/comments")
+//    public ResponseEntity<List<Comment>> getComments(
+//            @RequestParam("userId") Long userId,
+//            @RequestParam("allParent") Boolean allParent) {
+//        List<Comment> comments = commentService.getComments(userId, allParent);
+//        return ResponseEntity.ok().body(comments);
+//    }
 
     // 댓글 등록
     @PostMapping("/comment")
