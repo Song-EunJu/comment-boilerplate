@@ -71,11 +71,7 @@ public class CommentService {
 
         for(int i=0;i<commentReply.size();i++) {
             CommentReply cr = commentReply.get(i);
-            Comment comment = allComment
-                    .stream()
-                    .filter(co -> co.getId() == cr.getCommentId())
-                    .findFirst()
-                    .get();
+            Comment comment = findById();
 
             List<CommentResponse> list = getReplies(comment, member, option, allCommentReply, allComment); // 1번 댓글의 대댓글 목록들을 가져오기 위함.
             finalList.add(CommentResponse.of(comment, list)); // 1번 객체에 딸려오는 놈들
@@ -84,10 +80,14 @@ public class CommentService {
     }
 
     // 댓글 수정 삭제 시 권한 확인 메소드
-    public Comment findById(Long id){
-        return commentRepository.findById(id).orElseThrow(() -> {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "해당하는 댓글 번호가 없습니다");
-        });
+    public Comment findById(List<Comment> allComment, Long id){
+        return allComment
+                .stream()
+                .filter(co -> co.getId() == id)
+                .findFirst()
+                .orElseThrow(() -> {
+                    throw new ResponseStatusException(HttpStatus.NOT_FOUND, "해당하는 댓글 번호가 없습니다");
+                });
     }
 
 
