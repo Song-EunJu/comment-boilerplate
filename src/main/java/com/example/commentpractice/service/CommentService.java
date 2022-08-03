@@ -13,6 +13,7 @@ import com.example.commentpractice.repository.CommentReplyRepository;
 import com.example.commentpractice.repository.CommentRepository;
 import com.example.commentpractice.repository.ReportRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.var;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -30,13 +31,6 @@ public class CommentService {
     private final ReportRepository reportRepository;
     private final MemberService memberService;
     private final CommentReplyRepository commentReplyRepository;
-
-    // 댓글 수정 삭제 시 권한 확인 메소드
-    public Comment findById(Long id){
-        return commentRepository.findById(id).orElseThrow(() -> {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "해당하는 댓글 번호가 없습니다");
-        });
-    }
 
     public void confirmUpdateAuth(Comment comment, Member member) {
         if (comment.getMember().getId() != member.getId()) // 작성자가 아닌 경우
@@ -62,12 +56,13 @@ public class CommentService {
         });
     }
 
-
     public List<CommentResponse> getComments(Long userId, Boolean option) {
         Member member = memberService.findById(userId); // 조회하려는 사람
 
-        List<CommentReply> commentReply = commentReplyRepository
-                .findAll()
+        var allCommentReply = commentReplyRepository.findAll();
+        var allComment = commentRepository.findAll();
+
+        List<CommentReply> commentReply = allCommentReply
                 .stream()
                 .filter(cp -> cp.getParent() == true) // 부모 댓글인 애들로필터링해서
                 .collect(Collectors.toList());
@@ -76,14 +71,27 @@ public class CommentService {
 
         for(int i=0;i<commentReply.size();i++) {
             CommentReply cr = commentReply.get(i);
-            Comment comment = commentRepository.findById(cr.getCommentId()).get();// 1번 댓글
-            List<CommentResponse> list = getReplies(comment, member, option); // 1번 댓글의 대댓글 목록들을 가져오기 위함.
+            Comment comment = allComment
+                    .stream()
+                    .filter(co -> co.getId() == cr.getCommentId())
+                    .findFirst()
+                    .get();
+
+            List<CommentResponse> list = getReplies(comment, member, option, allCommentReply, allComment); // 1번 댓글의 대댓글 목록들을 가져오기 위함.
             finalList.add(CommentResponse.of(comment, list)); // 1번 객체에 딸려오는 놈들
         }
         return finalList;
     }
 
-    public List<CommentResponse> getReplies(Comment parent, Member member, Boolean option){
+    // 댓글 수정 삭제 시 권한 확인 메소드
+    public Comment findById(Long id){
+        return commentRepository.findById(id).orElseThrow(() -> {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "해당하는 댓글 번호가 없습니다");
+        });
+    }
+
+
+    public List<CommentResponse> getReplies(Comment parent, Member member, Boolean option, List<CommentReply> allCommentReply, List<Comment> allComment){
         List<CommentResponse> list = new ArrayList<>();
         List<CommentReply> commentReplies = commentReplyRepository.findByParentId(parent.getId()); // 1번 댓글을 부모로 갖는 자식댓글리스트
 
@@ -93,29 +101,33 @@ public class CommentService {
 
         for(int i=0;i<commentReplies.size();i++) {
             CommentReply commentReply = commentReplies.get(i);
-            Comment reply = commentRepository.findById(commentReply.getCommentId()).get();
+            Comment reply = allComment
+                    .stream()
+                    .filter()
 
-            List<CommentResponse> response = getReplies(reply, member, option);
+                    .commentRepository.findById(commentReply.getCommentId()).get();
+
+            List<CommentResponse> response = getReplies(reply, member, option, allCommentReply, allComment);
             CommentResponse commentResponse = CommentResponse.of(reply, response);
-            commentResponse.setComment(this.changeComment(reply, member, option));
+            commentResponse.setComment(this.changeComment(reply, member, option, allCommentReply, allComment));
             list.add(commentResponse);
         }
         return list;
     }
 
-    public String changeComment(Comment comment, Member member, Boolean option) {
+    public String changeComment(Comment comment, Member member, Boolean option, List<CommentReply> allCommentReply, List<Comment> allComment) {
         Long memberId = member.getId(); // 조회자
+        Long commentWriterId = comment.getMember().getId(); // 댓글 작성자
+
+        Long parentCommentWriterId; // 부모 댓글 작성자
         CommentReply commentReply = commentReplyRepository.findByCommentId(comment.getId()).get();
-        Long parentCommentWriterId;
-        if(commentReply.getParentId() == 0){
+        if(commentReply.getParentId() == 0){ // parentId 가 0인 경우 부모댓글작성자는 댓글 작성자와 같음
             parentCommentWriterId = comment.getMember().getId();
         }
         else{
             Comment parent = commentRepository.findById(commentReply.getParentId()).get();
             parentCommentWriterId = parent.getMember().getId();
         }
-
-        Long commentWriterId = comment.getMember().getId(); // 댓글작성자
 
         if (member.getRole() != Role.ADMIN) {  // 관리자 권한 아닌 경우
             if (comment.getDeleteStatus()) // 삭제 댓글처리
@@ -124,6 +136,7 @@ public class CommentService {
                 if (comment.getSecret()) { // 비댓인 경우
                     if (comment.getMember().getRole() != Role.GUEST) { // 게스트 유저가 아닌경우
                         if (commentWriterId != memberId) { // 댓글작성자!=조회자
+
                             if (option) { // 최상위 부모 댓글까지 조회 허용
                                 Comment next = comment;
                                 while (true) { // 최상위 부모 댓글이 아닐 때까지
@@ -142,6 +155,7 @@ public class CommentService {
                                 else
                                     return comment.getComment(); // 부모댓글작성자 == 조회자
                             }
+
                         }
                         return comment.getComment(); // 댓글작성자==조회자인 경우
                     }
