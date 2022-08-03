@@ -48,18 +48,10 @@ public class Comment extends BaseTimeEntity {
         this.member = member;
     }
 
-//    public void setParentComment(Comment comment) {
-//        this.parent = comment;
-//    }
-
     public void updateDeleteStatus() {
         this.deleteStatus = true;
     }
 
-//    public void setParentAndDepth(Comment parent, Long depth) {
-//        this.parent = parent;
-//        this.depth = depth;
-//    }
 
     public void updateComment(CommentRequest commentRequest) {
         if (commentRequest.getComment() != null)

@@ -19,21 +19,13 @@ public class CommentController {
     private final CommentService commentService;
 
     // 댓글 조회 (DTO 사용)
-    @GetMapping("/comments")0
+    @GetMapping("/comments")
     public ResponseEntity<List<CommentResponse>> getComments(
             @RequestParam("userId") Long userId,
             @RequestParam("allParent") Boolean allParent) {
         List<CommentResponse> comments = commentService.getComments(userId, allParent);
         return ResponseEntity.ok().body(comments);
     }
-
-//    @GetMapping("/comments")
-//    public ResponseEntity<List<Comment>> getComments(
-//            @RequestParam("userId") Long userId,
-//            @RequestParam("allParent") Boolean allParent) {
-//        List<Comment> comments = commentService.getComments(userId, allParent);
-//        return ResponseEntity.ok().body(comments);
-//    }
 
     // 댓글 등록
     @PostMapping("/comment")

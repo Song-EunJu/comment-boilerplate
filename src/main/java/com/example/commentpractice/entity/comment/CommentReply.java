@@ -19,10 +19,8 @@ public class CommentReply {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    @JoinColumn(foreignKey = @ForeignKey(name = "commentId"))
-    private Long commentId; // parentId
+    private Long commentId;
 
-    @JoinColumn(foreignKey = @ForeignKey(name = "commentId"))
     private Long parentId;
 
     private Boolean parent;

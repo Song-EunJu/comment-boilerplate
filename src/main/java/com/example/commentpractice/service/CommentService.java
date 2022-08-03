@@ -62,63 +62,95 @@ public class CommentService {
         });
     }
 
-//    public List<CommentResponse> getComments(Long userId, Boolean allParent) {
-//        Member member = memberService.findById(userId); // 조회하려는 사람
-//
-//        /*
-//            findAll() 까지는 문제가 없음.
-//            근데 댓글의 대댓글을 계속 select 해오는 것이 문제 -> jpa n+1 문제 (따라서 fetch join을 써야 함)
-//            따라서 서비스 단에서 계층구조를 짜라는 말
-//        */
-//        return commentRepository
-//                .findAll()
-//                .stream()
-//                .map(comment -> CommentResponse.of(comment, member, allParent))
-//                .collect(Collectors.toList());
-//    }
 
-    public List<CommentResponse> getComments(Long userId, Boolean allParent) {
+    public List<CommentResponse> getComments(Long userId, Boolean option) {
         Member member = memberService.findById(userId); // 조회하려는 사람
+
         List<CommentReply> commentReply = commentReplyRepository
                 .findAll()
                 .stream()
                 .filter(cp -> cp.getParent() == true) // 부모 댓글인 애들로필터링해서
                 .collect(Collectors.toList());
 
-        List<CommentResponse> finalList = new ArrayList<>(); // 이거 고대로 리턴할거임
+        List<CommentResponse> finalList = new ArrayList<>(); // 최종 리턴할 리스트
 
-        for (CommentReply cr : commentReply) { // 얘네가 finalList.add(commentResponse) 바로 아래에 들어가는 댓글
+        for(int i=0;i<commentReply.size();i++) {
+            CommentReply cr = commentReply.get(i);
             Comment comment = commentRepository.findById(cr.getCommentId()).get();// 1번 댓글
-            getReplies(comment, cr); // 1번 댓글의 대댓글 목록들을 가져오기 위함.
-            // 1번 댓글의 대댓글 목록들로 점점 파고들면서 대댓글이 업을 때까지 돌림
-
-//            finalList.add(CommentResponse.of(comment, ));
-            // 여기서 1번 댓글에  대댓글까지 딸린 comment 하나를 commentResponse로 만들어서 추가
-            // 대댓글 목록 다 추가한 후 최종적으로 finalList에 add
+            List<CommentResponse> list = getReplies(comment, member, option); // 1번 댓글의 대댓글 목록들을 가져오기 위함.
+            finalList.add(CommentResponse.of(comment, list)); // 1번 객체에 딸려오는 놈들
         }
         return finalList;
     }
 
-    public List<CommentResponse> getReplies(Comment parent, CommentReply cr){
+    public List<CommentResponse> getReplies(Comment parent, Member member, Boolean option){
+        List<CommentResponse> list = new ArrayList<>();
+        List<CommentReply> commentReplies = commentReplyRepository.findByParentId(parent.getId()); // 1번 댓글을 부모로 갖는 자식댓글리스트
 
-        while (true) { // 해당 commentId 와 같은 것이 parentId 에 없을 때까지 돈다
-            List<CommentResponse> list = new ArrayList<>();
-            Comment comment = commentRepository.findById(cr.getCommentId()).get(); // 1번 댓글
-            List<CommentReply> crs = commentReplyRepository.findByParentId(comment.getId()); // 1번댓글을 부모로 갖는 자식댓글리스트
-            // 리스트에 값이 없는데 꺼낼수잇나/???
+        if (commentReplies.isEmpty()) { // 대댓글의 끝까지 온 경우 replies 에 아무것도 없는 것 리턴
+            return new ArrayList<>();
+        }
 
-            for(CommentReply commentReply : crs) {
-                if (commentReply == null) { // 하나 대댓글의 끝가지 온 것
-                    List<CommentResponse> commentResponses = new ArrayList<>();
-                    list.add(CommentResponse.of(parent, new ArrayList<>()));
-                    return commentResponses;
+        for(int i=0;i<commentReplies.size();i++) {
+            CommentReply commentReply = commentReplies.get(i);
+            Comment reply = commentRepository.findById(commentReply.getCommentId()).get();
+
+            List<CommentResponse> response = getReplies(reply, member, option);
+            CommentResponse commentResponse = CommentResponse.of(reply, response);
+            commentResponse.setComment(this.changeComment(reply, member, option));
+            list.add(commentResponse);
+        }
+        return list;
+    }
+
+    public String changeComment(Comment comment, Member member, Boolean option) {
+        Long memberId = member.getId(); // 조회자
+        CommentReply commentReply = commentReplyRepository.findByCommentId(comment.getId()).get();
+        Long parentCommentWriterId;
+        if(commentReply.getParentId() == 0){
+            parentCommentWriterId = comment.getMember().getId();
+        }
+        else{
+            Comment parent = commentRepository.findById(commentReply.getParentId()).get();
+            parentCommentWriterId = parent.getMember().getId();
+        }
+
+        Long commentWriterId = comment.getMember().getId(); // 댓글작성자
+
+        if (member.getRole() != Role.ADMIN) {  // 관리자 권한 아닌 경우
+            if (comment.getDeleteStatus()) // 삭제 댓글처리
+                return "삭제된 댓글입니다";
+            else { // 비밀 댓글 조회처리
+                if (comment.getSecret()) { // 비댓인 경우
+                    if (comment.getMember().getRole() != Role.GUEST) { // 게스트 유저가 아닌경우
+                        if (commentWriterId != memberId) { // 댓글작성자!=조회자
+                            if (option) { // 최상위 부모 댓글까지 조회 허용
+                                Comment next = comment;
+                                while (true) { // 최상위 부모 댓글이 아닐 때까지
+                                    if (next.getMember().getId() == memberId) { // 부모댓글 작성자 == 조회자
+                                        return comment.getComment();
+                                    } else { // 부모댓글 작성자 != 조회자인 경우
+                                        CommentReply cr = commentReplyRepository.findByCommentId(next.getId()).get();
+                                        if(cr.getParentId() == 0)
+                                            return "비밀 댓글입니다";
+                                        next = commentRepository.findById(cr.getParentId()).get(); // 다시 한 계층 더 올라감
+                                    }
+                                }
+                            } else { // 바로 위 부모 댓글까지 조회 허용
+                                if (parentCommentWriterId != memberId)  // 부모댓글작성자 != 조회자
+                                    return "비밀 댓글입니다"; // 부모 댓글 작성자!=조회자
+                                else
+                                    return comment.getComment(); // 부모댓글작성자 == 조회자
+                            }
+                        }
+                        return comment.getComment(); // 댓글작성자==조회자인 경우
+                    }
+                    return "비밀 댓글입니다"; // 게스트 유저인 경우 비댓은 패스워드 입력해야 볼 수 있음
                 }
-                List<CommentResponse> response = getReplies(comment, commentReply);
-//                list.add(CommentResponse.of(comment, response));
-                list.get(0).getReplies().add(CommentResponse.of(comment, response)); //???
-
+                return comment.getComment();  // 애초에 비댓이 아닌 경우
             }
         }
+        return comment.getComment(); // 관리자 권한인 경우 다 볼 수 있음
     }
 
     // 댓글 등록
@@ -190,8 +222,7 @@ public class CommentService {
         reply.setMember(member);
         Comment savedReply = commentRepository.save(reply);
 
-        // comment_id, reply_id 를 저장하는 것으로 변경
-        CommentReply commentReply = new CommentReply(commentId, savedReply.getId(), false);
+        CommentReply commentReply = new CommentReply(savedReply.getId(), commentId, false);
         commentReplyRepository.save(commentReply);
 
         return savedReply.getId();
