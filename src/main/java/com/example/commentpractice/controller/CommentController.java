@@ -1,6 +1,7 @@
 package com.example.commentpractice.controller;
 
 import com.example.commentpractice.dto.CommentDeleteDto;
+import com.example.commentpractice.dto.CommentReportDto;
 import com.example.commentpractice.dto.CommentRequest;
 import com.example.commentpractice.dto.CommentResponse;
 import com.example.commentpractice.service.CommentService;
@@ -42,14 +43,14 @@ public class CommentController {
         return ResponseEntity.ok().body("댓글 수정 완료");
     }
 
-    // 댓글 신고
-//    @PostMapping("/comments/{commentId}/report")
-//    public ResponseEntity<String> reportComment(
-//            @RequestBody CommentReportDto commentReportDto,
-//            @PathVariable("commentId") Long commentId) {
-//        commentService.reportComment(commentReportDto, commentId);
-//        return ResponseEntity.ok().body("댓글 신고 완료");
-//    }
+//     댓글 신고
+    @PostMapping("/comments/{commentId}/report")
+    public ResponseEntity<String> reportComment(
+            @RequestBody CommentReportDto commentReportDto,
+            @PathVariable("commentId") Long commentId) {
+        commentService.reportComment(commentReportDto, commentId);
+        return ResponseEntity.ok().body("댓글 신고 완료");
+    }
 
     // 댓글 삭제
     @DeleteMapping("/comments/{commentId}")
