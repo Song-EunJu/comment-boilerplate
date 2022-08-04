@@ -1,18 +1,17 @@
 package com.example.commentpractice.service;
 
 import com.example.commentpractice.dto.CommentDeleteDto;
-import com.example.commentpractice.dto.CommentReportDto;
 import com.example.commentpractice.dto.CommentRequest;
 import com.example.commentpractice.dto.CommentResponse;
 import com.example.commentpractice.entity.comment.Comment;
 import com.example.commentpractice.entity.comment.CommentReply;
-import com.example.commentpractice.entity.report.Report;
 import com.example.commentpractice.entity.user.Member;
 import com.example.commentpractice.entity.user.Role;
 import com.example.commentpractice.repository.CommentReplyRepository;
 import com.example.commentpractice.repository.CommentRepository;
 import com.example.commentpractice.repository.ReportRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.annotation.Bean;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -30,8 +29,14 @@ public class CommentService {
     private final ReportRepository reportRepository;
     private final MemberService memberService;
     private final CommentReplyRepository commentReplyRepository;
-    private List<Comment> allComment = commentRepository.findAll();
-    private List<CommentReply> allCommentReply = commentReplyRepository.findAll();
+    private List<Comment> allComment;
+    private List<CommentReply> allCommentReply;
+
+    @Bean
+    public void initComments(){
+        allComment = commentRepository.findAll();
+        allCommentReply = commentReplyRepository.findAll();
+    }
 
     public void confirmUpdateAuth(Comment comment, Member member) {
         if (comment.getMember().getId() != member.getId()) // 작성자가 아닌 경우
@@ -51,7 +56,7 @@ public class CommentService {
     }
 
     // 댓글 존재 여부 확인
-    public Comment findById(Long id){
+    public Comment findCommentById(Long id){
         return allComment
                 .stream()
                 .filter(comment -> comment.getId() == id)
@@ -62,15 +67,16 @@ public class CommentService {
     }
 
     // 해당 댓글을 부모댓글로 가지고 있는 대댓글이 있는지 확인
-    public List<CommentReply> findByParentId(Long id){
+    public List<CommentReply> findCommentReplyByParentId(Long id){
         return allCommentReply
                 .stream()
                 .filter(commentReply -> commentReply.getParentId() == id)
                 .collect(Collectors.toList());
     }
 
+
     // 해당 댓글이 CommentReply 에 있는지 확인
-    public CommentReply findByCommentId(Long id){
+    public CommentReply findCommentReplyByCommentId(Long id){
         return allCommentReply
                 .stream()
                 .filter(commentReply -> commentReply.getCommentId() == id)
@@ -83,36 +89,32 @@ public class CommentService {
     public List<CommentResponse> getComments(Long userId, Boolean allParent) {
         Member member = memberService.findById(userId); // 조회하려는 사람
 
-        List<CommentReply> commentReply = allCommentReply
+        List<CommentReply> filteredCommentReplies = allCommentReply
                 .stream()
                 .filter(cp -> cp.getParent() == true) // 부모 댓글인 애들로필터링해서
                 .collect(Collectors.toList());
 
         List<CommentResponse> finalList = new ArrayList<>(); // 최종 리턴할 리스트
 
-        for(int i=0;i<commentReply.size();i++) {
-            CommentReply cr = commentReply.get(i);
-            Comment comment = findById(cr.getCommentId());
-
-            List<CommentResponse> list = getReplies(comment, member, allParent); // 1번 댓글의 대댓글 목록들을 가져오기 위함.
-            finalList.add(CommentResponse.of(comment, list)); // 1번 객체에 딸려오는 놈들
-        }
-        return finalList;
+        return getCommentResponses(member, allParent, filteredCommentReplies, finalList, filteredCommentReplies);
     }
 
-    public List<CommentResponse> getReplies(Comment parent, Member member, Boolean allParent){
+    public List<CommentResponse> getReplies(Comment parent, Member member, Boolean allParent, List<CommentReply> filteredCommentReplies){
         List<CommentResponse> list = new ArrayList<>();
-        List<CommentReply> commentReplies = findByParentId(parent.getId()); // 1번 댓글을 부모로 갖는 자식댓글리스트
+        List<CommentReply> commentReplies = findCommentReplyByParentId(parent.getId());
 
         if (commentReplies.isEmpty()) { // 대댓글의 끝까지 온 경우 replies 에 아무것도 없는 것 리턴
             return new ArrayList<>();
         }
+        return getCommentResponses(member, allParent, filteredCommentReplies, list, commentReplies);
+    }
 
+    private List<CommentResponse> getCommentResponses(Member member, Boolean allParent, List<CommentReply> filteredCommentReplies, List<CommentResponse> list, List<CommentReply> commentReplies) {
         for(int i=0;i<commentReplies.size();i++) {
-            CommentReply commentReply = commentReplies.get(i);
-            Comment reply = findById(commentReply.getCommentId());
+            CommentReply cr = commentReplies.get(i);
+            Comment reply = findCommentById(cr.getCommentId());
 
-            List<CommentResponse> response = getReplies(reply, member, allParent);
+            List<CommentResponse> response = getReplies(reply, member, allParent, filteredCommentReplies); // 5번
             CommentResponse commentResponse = CommentResponse.of(reply, response);
             commentResponse.setComment(changeComment(reply, member, allParent));
             list.add(commentResponse);
@@ -124,43 +126,47 @@ public class CommentService {
         Long memberId = member.getId(); // 조회자
         Long commentWriterId = comment.getMember().getId(); // 댓글 작성자
         Long parentCommentWriterId; // 부모 댓글 작성자
-        CommentReply commentReply = findByCommentId(comment.getId());
-        Comment parent = null;
+        CommentReply cr = findCommentReplyByCommentId(comment.getId());
 
-        if(commentReply.getParentId() == 0) // parentId 가 0인 경우 부모댓글작성자는 댓글 작성자와 같음
-            parentCommentWriterId = comment.getMember().getId();
+        if(cr.getParentId() == 0) { // parentId 가 0인 경우 부모댓글작성자는 댓글 작성자와 같음
+            parentCommentWriterId = commentWriterId;
+        }
         else {
-            parent = findById(commentReply.getParentId());
+            Comment parent = findCommentById(cr.getParentId());
             parentCommentWriterId = parent.getMember().getId();
         }
 
-        if (member.getRole() == Role.ADMIN) // 관리자인 경우 아예 다보여야 함
+        if (member.getRole() == Role.ADMIN) // 관리자인 경우
             return comment.getComment();
 
         if (comment.getDeleteStatus()) // 삭제 댓글처리
             return "삭제된 댓글입니다";
 
-        if (comment.getMember().getRole() == Role.GUEST || comment.getSecret()) // 게스트 유저이거나, 비밀 댓글인 경우
+        if (!comment.getSecret()) // 애초에 비댓이 아닌 경우
+            return comment.getComment();
+
+        if (comment.getMember().getRole() == Role.GUEST)
             return "비밀 댓글입니다";
 
         if (commentWriterId == memberId) // 댓글 작성자 == 조회자
             return comment.getComment();
 
         return allParent
-                ? permitAllParent(comment, parent, memberId)
+                ? permitAllParent(comment, memberId)
                 : permitDirectParent(comment, parentCommentWriterId, memberId);
     }
 
     // 모든 상위 부모댓글 조회 가능
-    public String permitAllParent(Comment comment, Comment parent, Long memberId){
-        Comment parentComment = parent;
-        CommentReply cr = findByCommentId(parentComment.getId()); // 부모댓글의 id
+    public String permitAllParent(Comment comment, Long memberId) {
+        Comment parentComment = comment;
+
+        CommentReply cr = findCommentReplyByCommentId(parentComment.getId()); // 부모댓글의 id
 
         while (parentComment.getMember().getId() != memberId) {  // 부모댓글 작성자 != 조회자인 동안
-            if(cr.getParentId() == 0)
+            if (cr.getParentId() == 0)
                 return "비밀 댓글입니다";
-            parentComment = findById(cr.getParentId()); // 다시 한 계층 더 올라감
-            cr = findByCommentId(parentComment.getId());
+            parentComment = findCommentById(cr.getParentId()); // 다시 한 계층 더 올라감
+            cr = findCommentReplyByCommentId(parentComment.getId());
         }
         return comment.getComment(); // while문을 빠져나온 경우 부모댓글 작성자 == 조회자인 경우
     }
@@ -192,7 +198,7 @@ public class CommentService {
 
     // 댓글 수정
     public void updateComment(CommentRequest commentRequest, Long commentId) {
-        Comment comment = findById(commentId);
+        Comment comment = findCommentById(commentId);
 
         if(commentRequest.getPassword() != null) // 익명 댓글 수정하는 경우 비밀번호 확인 - 비밀번호만 입력하면 됨
             confirmPassword(commentRequest.getPassword(), comment);
@@ -206,7 +212,7 @@ public class CommentService {
 
     // 댓글 삭제
     public void deleteComment(CommentDeleteDto commentDeleteDto, Long commentId) {
-        Comment comment = findById(commentId);
+        Comment comment = findCommentById(commentId);
 
         if(commentDeleteDto.getPassword() != null) // 익명 댓글 삭제하는 경우 비밀번호 확인
             confirmPassword(commentDeleteDto.getPassword(), comment);
@@ -218,16 +224,16 @@ public class CommentService {
         commentRepository.save(comment);
     }
 
-    // 댓글 신고
-    public void reportComment(CommentReportDto commentReportDto, Long commentId){
-        String reason = commentReportDto.getReason();
-        Member member = memberService.findById(commentReportDto.getUserId());
-        Comment comment = findById(commentId);
-        Report report = commentReportDto.toEntity(reason, member, comment);
-        Report savedReport = reportRepository.save(report);
-        comment.addReport(savedReport);
-        commentRepository.save(comment);
-    }
+//    // 댓글 신고
+//    public void reportComment(CommentReportDto commentReportDto, Long commentId){
+//        String reason = commentReportDto.getReason();
+//        Member member = memberService.findById(commentReportDto.getUserId());
+//        Comment comment = findCommentById(commentId);
+//        Report report = commentReportDto.toEntity(reason, member, comment);
+//        Report savedReport = reportRepository.save(report);
+//        comment.addReport(savedReport);
+//        commentRepository.save(comment);
+//    }
 
     // 대댓글 등록
     public Long saveReply(CommentRequest commentRequest, Long commentId) {

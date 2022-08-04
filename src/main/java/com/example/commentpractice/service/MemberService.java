@@ -5,6 +5,7 @@ import com.example.commentpractice.dto.MemberRequest;
 import com.example.commentpractice.entity.user.Member;
 import com.example.commentpractice.repository.MemberRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.annotation.Bean;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -22,7 +23,12 @@ public class MemberService {
 
     private final MemberRepository memberRepository;
 
-    private List<Member> members = memberRepository.findAll();
+    private List<Member> members;
+
+    @Bean
+    public void initMembers(){
+        members = memberRepository.findAll();
+    }
 
     public Long saveMember(MemberRequest userDto) {
         String role = userDto.getRole();

@@ -2,7 +2,6 @@ package com.example.commentpractice.entity.comment;
 
 import com.example.commentpractice.dto.CommentRequest;
 import com.example.commentpractice.entity.BaseTimeEntity;
-import com.example.commentpractice.entity.report.Report;
 import com.example.commentpractice.entity.user.Member;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 import lombok.AllArgsConstructor;
@@ -13,8 +12,6 @@ import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.DynamicInsert;
 
 import javax.persistence.*;
-import java.util.ArrayList;
-import java.util.List;
 
 @Entity
 @Builder
@@ -41,8 +38,10 @@ public class Comment extends BaseTimeEntity {
     @ManyToOne(targetEntity = Member.class)
     private Member member;
 
-    @OneToMany(targetEntity = Report.class)
-    private List<Report> reports = new ArrayList<>();
+//    @OneToMany(targetEntity = Report.class)
+//    @JsonBackReference // 역 방향 부모 -> 자식
+//    @JsonIgnore
+//    private List<Report> reports = new ArrayList<>();
 
     public void setMember(Member member) {
         this.member = member;
@@ -60,7 +59,7 @@ public class Comment extends BaseTimeEntity {
             this.secret = commentRequest.getSecret();
     }
 
-    public void addReport(Report report) {
-        reports.add(report);
-    }
+//    public void addReport(Report report) {
+//        reports.add(report);
+//    }
 }
