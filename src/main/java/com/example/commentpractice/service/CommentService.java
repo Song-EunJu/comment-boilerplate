@@ -80,7 +80,7 @@ public class CommentService {
                 });
     }
 
-    public List<CommentResponse> getComments(Long userId, Boolean option) {
+    public List<CommentResponse> getComments(Long userId, Boolean allParent) {
         Member member = memberService.findById(userId); // 조회하려는 사람
 
         List<CommentReply> commentReply = allCommentReply
@@ -94,14 +94,13 @@ public class CommentService {
             CommentReply cr = commentReply.get(i);
             Comment comment = findById(cr.getCommentId());
 
-            List<CommentResponse> list = getReplies(comment, member, option); // 1번 댓글의 대댓글 목록들을 가져오기 위함.
+            List<CommentResponse> list = getReplies(comment, member, allParent); // 1번 댓글의 대댓글 목록들을 가져오기 위함.
             finalList.add(CommentResponse.of(comment, list)); // 1번 객체에 딸려오는 놈들
         }
         return finalList;
     }
 
-
-    public List<CommentResponse> getReplies(Comment parent, Member member, Boolean option){
+    public List<CommentResponse> getReplies(Comment parent, Member member, Boolean allParent){
         List<CommentResponse> list = new ArrayList<>();
         List<CommentReply> commentReplies = findByParentId(parent.getId()); // 1번 댓글을 부모로 갖는 자식댓글리스트
 
@@ -113,63 +112,64 @@ public class CommentService {
             CommentReply commentReply = commentReplies.get(i);
             Comment reply = findById(commentReply.getCommentId());
 
-            List<CommentResponse> response = getReplies(reply, member, option);
+            List<CommentResponse> response = getReplies(reply, member, allParent);
             CommentResponse commentResponse = CommentResponse.of(reply, response);
-            commentResponse.setComment(changeComment(reply, member, option));
+            commentResponse.setComment(changeComment(reply, member, allParent));
             list.add(commentResponse);
         }
         return list;
     }
 
-    public String changeComment(Comment comment, Member member, Boolean option) {
+    public String changeComment(Comment comment, Member member, Boolean allParent) {
         Long memberId = member.getId(); // 조회자
         Long commentWriterId = comment.getMember().getId(); // 댓글 작성자
-
         Long parentCommentWriterId; // 부모 댓글 작성자
         CommentReply commentReply = findByCommentId(comment.getId());
-        if(commentReply.getParentId() == 0){ // parentId 가 0인 경우 부모댓글작성자는 댓글 작성자와 같음
+        Comment parent = null;
+
+        if(commentReply.getParentId() == 0) // parentId 가 0인 경우 부모댓글작성자는 댓글 작성자와 같음
             parentCommentWriterId = comment.getMember().getId();
-        }
-        else{
-            Comment parent = findById(commentReply.getParentId());
+        else {
+            parent = findById(commentReply.getParentId());
             parentCommentWriterId = parent.getMember().getId();
         }
 
-        if (member.getRole() != Role.ADMIN) {  // 관리자 권한 아닌 경우
-            if (comment.getDeleteStatus()) // 삭제 댓글처리
-                return "삭제된 댓글입니다";
-            else { // 비밀 댓글 조회처리
-                if (comment.getSecret()) { // 비댓인 경우
-                    if (comment.getMember().getRole() != Role.GUEST) { // 게스트 유저가 아닌경우
-                        if (commentWriterId != memberId) { // 댓글작성자!=조회자
-                            if (option) { // 최상위 부모 댓글까지 조회 허용
-                                Comment next = comment;
-                                while (true) { // 최상위 부모 댓글이 아닐 때까지
-                                    if (next.getMember().getId() == memberId) { // 부모댓글 작성자 == 조회자
-                                        return comment.getComment();
-                                    } else { // 부모댓글 작성자 != 조회자인 경우
-                                        CommentReply cr = findByCommentId(next.getId());
-                                        if(cr.getParentId() == 0)
-                                            return "비밀 댓글입니다";
-                                        next = findById(cr.getParentId()); // 다시 한 계층 더 올라감
-                                    }
-                                }
-                            } else { // 바로 위 부모 댓글까지 조회 허용
-                                if (parentCommentWriterId != memberId)  // 부모댓글작성자 != 조회자
-                                    return "비밀 댓글입니다"; // 부모 댓글 작성자!=조회자
-                                else
-                                    return comment.getComment(); // 부모댓글작성자 == 조회자
-                            }
+        if (member.getRole() == Role.ADMIN) // 관리자인 경우 아예 다보여야 함
+            return comment.getComment();
 
-                        }
-                        return comment.getComment(); // 댓글작성자==조회자인 경우
-                    }
-                    return "비밀 댓글입니다"; // 게스트 유저인 경우 비댓은 패스워드 입력해야 볼 수 있음
-                }
-                return comment.getComment();  // 애초에 비댓이 아닌 경우
-            }
+        if (comment.getDeleteStatus()) // 삭제 댓글처리
+            return "삭제된 댓글입니다";
+
+        if (comment.getMember().getRole() == Role.GUEST || comment.getSecret()) // 게스트 유저이거나, 비밀 댓글인 경우
+            return "비밀 댓글입니다";
+
+        if (commentWriterId == memberId) // 댓글 작성자 == 조회자
+            return comment.getComment();
+
+        return allParent
+                ? permitAllParent(comment, parent, memberId)
+                : permitDirectParent(comment, parentCommentWriterId, memberId);
+    }
+
+    // 모든 상위 부모댓글 조회 가능
+    public String permitAllParent(Comment comment, Comment parent, Long memberId){
+        Comment parentComment = parent;
+        CommentReply cr = findByCommentId(parentComment.getId()); // 부모댓글의 id
+
+        while (parentComment.getMember().getId() != memberId) {  // 부모댓글 작성자 != 조회자인 동안
+            if(cr.getParentId() == 0)
+                return "비밀 댓글입니다";
+            parentComment = findById(cr.getParentId()); // 다시 한 계층 더 올라감
+            cr = findByCommentId(parentComment.getId());
         }
-        return comment.getComment(); // 관리자 권한인 경우 다 볼 수 있음
+        return comment.getComment(); // while문을 빠져나온 경우 부모댓글 작성자 == 조회자인 경우
+    }
+
+    // 바로 상위 댓글 조회 가능
+    public String permitDirectParent(Comment comment, Long parentCommentWriterId, Long memberId){
+        return parentCommentWriterId != memberId // 부모댓글작성자 != 조회자
+                ? "비밀 댓글입니다"
+                : comment.getComment();
     }
 
     // 댓글 등록
