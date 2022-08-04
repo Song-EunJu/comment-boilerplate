@@ -29,7 +29,7 @@ public class CommentResponse {
                 .comment(comment.getComment())
                 .deleteStatus(comment.getDeleteStatus())
                 .secret(comment.getSecret())
-                .reports(comment.getReports())
+//                .reports(comment.getReports())
                 .replies(replies)
                 .build();
     }
