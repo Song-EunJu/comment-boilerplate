@@ -52,7 +52,7 @@ public class CommentService {
     }
 
     // 익명 댓글/수정 삭제 시 비밀번호 확인 메소드
-    public void confirmPassword(String password, Comment comment){
+    public void confirmPassword(String password, Comment comment) {
         if(!passwordEncoder.matches(password, comment.getMember().getPassword()))
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "비밀번호가 맞지 않습니다");
     }
@@ -70,19 +70,42 @@ public class CommentService {
 
     // 해당 댓글을 부모댓글로 가지고 있는 대댓글이 있는지 확인
     public List<CommentReply> findCommentReplyByParentId(Long id){
-        return allCommentReply
-                .stream()
-                .filter(commentReply -> commentReply.getParentId() == id)
-                .collect(Collectors.toList());
+        /**
+         * 최대한 반복문 돌리는 횟수를 줄이기 위해서
+         * 1. 일단 부모 번호로 소팅 0,1,2 parentId
+         * 2. removeIf 를 하면 또 내장함수에서 while 문으로 전체 원소를 돌기 때문에 얘는 쓰지 않기로
+         * 3. for문을 돌면서 부모 댓글일경우에 다 뛰어넘고, 부모댓글보다 커지는 경우 break
+         */
+
+        /*
+        * 엔티티 하나만 조회할 때는 즉시 로딩으로 설정하면 연관된 팀도 한 쿼리로 가져오도록 최적화 되지만 JPQL을 사용하면 이야기가 달라집니다.
+        * JPQL은 연관관계를 즉시로딩으로 설정하는 것과 상관없이 JPQL 자체만으로 SQL로 그대로 번역됩니다.
+        * */
+
+        /*
+            if (그 빼놓은 리스트에 있으면)
+                걔를 꺼내서 반환
+            else (만약 리스트에 없으면)
+                아래 로직으로 계산필요
+         */
+
+        List<CommentReply> filteredCommentReplies = new ArrayList<>();
+
+        // 일단 부모 번호로 소팅하기
+        allCommentReply.sort((o1,o2) -> (int) (o1.getParentId() - o2.getParentId()));
+
+        for(int i=0;i<allCommentReply.size();i++){
+            CommentReply commentReply = allCommentReply.get(i);
+            if(commentReply.getParentId() == 0) // 부모 댓글일 경우 안돌아도됨....
+                continue;
+            if(commentReply.getParentId() == id)
+                filteredCommentReplies.add(commentReply);
+            else if(commentReply.getParentId() > id) // 찾는 id 번호보다 부모 번호가 커지는 경우 break
+                break;
+        }
+        return filteredCommentReplies;
     }
-
-    // 찾을 때마다 하나씩 줄어든다...........
-    // 뺄때마다 찾을때마다 뺀다.
-    // 부모번호로 소팅 / 뺀 걸로 그때그때 걔를 리스트로 만들어서 걔로 반복문을 돌면 돌 때마다 조금씩 빠짐 ... . . .
-    // 부모번호로 소팅하고, 해당 댓글을 부모 댓글로 가지고 있는 대댓글이 있는지 확인하는 것이므로,
-    // 1,6번 조회하면 1번을 빼버리고 2,3 번 넣고 2번 빼버리고 4,5, 번 넣으면 그 때 그 때 걔를 리스트로 만들어서
-    // 반복문 돌면 돌ㄷ때마다 조금씩 빠짐
-
+    
     // 해당 댓글이 CommentReply 에 있는지 확인
     public CommentReply findCommentReplyByCommentId(Long id){
         return allCommentReply
