@@ -1,10 +1,12 @@
 package com.example.commentpractice.service;
 
 import com.example.commentpractice.dto.CommentDeleteDto;
+import com.example.commentpractice.dto.CommentReportDto;
 import com.example.commentpractice.dto.CommentRequest;
 import com.example.commentpractice.dto.CommentResponse;
 import com.example.commentpractice.entity.comment.Comment;
 import com.example.commentpractice.entity.comment.CommentReply;
+import com.example.commentpractice.entity.report.Report;
 import com.example.commentpractice.entity.user.Member;
 import com.example.commentpractice.entity.user.Role;
 import com.example.commentpractice.repository.CommentReplyRepository;
@@ -50,7 +52,7 @@ public class CommentService {
     }
 
     // 익명 댓글/수정 삭제 시 비밀번호 확인 메소드
-    public void confirmPassword(String password, Comment comment){
+    public void confirmPassword(String password, Comment comment) {
         if(!passwordEncoder.matches(password, comment.getMember().getPassword()))
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "비밀번호가 맞지 않습니다");
     }
@@ -68,13 +70,42 @@ public class CommentService {
 
     // 해당 댓글을 부모댓글로 가지고 있는 대댓글이 있는지 확인
     public List<CommentReply> findCommentReplyByParentId(Long id){
-        return allCommentReply
-                .stream()
-                .filter(commentReply -> commentReply.getParentId() == id)
-                .collect(Collectors.toList());
+        /**
+         * 최대한 반복문 돌리는 횟수를 줄이기 위해서
+         * 1. 일단 부모 번호로 소팅 0,1,2 parentId
+         * 2. removeIf 를 하면 또 내장함수에서 while 문으로 전체 원소를 돌기 때문에 얘는 쓰지 않기로
+         * 3. for문을 돌면서 부모 댓글일경우에 다 뛰어넘고, 부모댓글보다 커지는 경우 break
+         */
+
+        /*
+        * 엔티티 하나만 조회할 때는 즉시 로딩으로 설정하면 연관된 팀도 한 쿼리로 가져오도록 최적화 되지만 JPQL을 사용하면 이야기가 달라집니다.
+        * JPQL은 연관관계를 즉시로딩으로 설정하는 것과 상관없이 JPQL 자체만으로 SQL로 그대로 번역됩니다.
+        * */
+
+        /*
+            if (그 빼놓은 리스트에 있으면)
+                걔를 꺼내서 반환
+            else (만약 리스트에 없으면)
+                아래 로직으로 계산필요
+         */
+
+        List<CommentReply> filteredCommentReplies = new ArrayList<>();
+
+        // 일단 부모 번호로 소팅하기
+        allCommentReply.sort((o1,o2) -> (int) (o1.getParentId() - o2.getParentId()));
+
+        for(int i=0;i<allCommentReply.size();i++){
+            CommentReply commentReply = allCommentReply.get(i);
+            if(commentReply.getParentId() == 0) // 부모 댓글일 경우 안돌아도됨....
+                continue;
+            if(commentReply.getParentId() == id)
+                filteredCommentReplies.add(commentReply);
+            else if(commentReply.getParentId() > id) // 찾는 id 번호보다 부모 번호가 커지는 경우 break
+                break;
+        }
+        return filteredCommentReplies;
     }
-
-
+    
     // 해당 댓글이 CommentReply 에 있는지 확인
     public CommentReply findCommentReplyByCommentId(Long id){
         return allCommentReply
@@ -91,35 +122,35 @@ public class CommentService {
 
         List<CommentReply> filteredCommentReplies = allCommentReply
                 .stream()
-                .filter(cp -> cp.getParent() == true) // 부모 댓글인 애들로필터링해서
+                .filter(cp -> cp.getParentId() == 0) // 최상위 댓글들만 필터링
                 .collect(Collectors.toList());
 
         List<CommentResponse> finalList = new ArrayList<>(); // 최종 리턴할 리스트
 
-        return getCommentResponses(member, allParent, filteredCommentReplies, finalList, filteredCommentReplies);
+        return getCommentResponses(member, allParent, finalList, filteredCommentReplies);
     }
 
-    public List<CommentResponse> getReplies(Comment parent, Member member, Boolean allParent, List<CommentReply> filteredCommentReplies){
-        List<CommentResponse> list = new ArrayList<>();
-        List<CommentReply> commentReplies = findCommentReplyByParentId(parent.getId());
-
-        if (commentReplies.isEmpty()) { // 대댓글의 끝까지 온 경우 replies 에 아무것도 없는 것 리턴
-            return new ArrayList<>();
-        }
-        return getCommentResponses(member, allParent, filteredCommentReplies, list, commentReplies);
-    }
-
-    private List<CommentResponse> getCommentResponses(Member member, Boolean allParent, List<CommentReply> filteredCommentReplies, List<CommentResponse> list, List<CommentReply> commentReplies) {
+    private List<CommentResponse> getCommentResponses(Member member, Boolean allParent, List<CommentResponse> list, List<CommentReply> commentReplies) {
         for(int i=0;i<commentReplies.size();i++) {
             CommentReply cr = commentReplies.get(i);
-            Comment reply = findCommentById(cr.getCommentId());
+            Comment reply = findCommentById(cr.getCommentId()); // 최상위 댓글 객체 1번
 
-            List<CommentResponse> response = getReplies(reply, member, allParent, filteredCommentReplies); // 5번
+            List<CommentResponse> response = getReplies(reply, member, allParent); // 1번 댓글의 대댓글 받아오기
             CommentResponse commentResponse = CommentResponse.of(reply, response);
-            commentResponse.setComment(changeComment(reply, member, allParent));
+            CommentResponse.of(reply, response).setComment(changeComment(reply, member, allParent)); // 반환할 때 문자열 변경
             list.add(commentResponse);
         }
-        return list;
+        return list; // 최종 댓글, 대댓글 리스트
+    }
+
+    public List<CommentResponse> getReplies(Comment parent, Member member, Boolean allParent){ // 1번 댓글
+        List<CommentResponse> list = new ArrayList<>();
+        List<CommentReply> commentReplies = findCommentReplyByParentId(parent.getId()); // 1번 댓글을 부모 댓글로 갖는 자식 댓글리스트
+
+        if (commentReplies.isEmpty()) { // 대댓글의 끝까지 온 경우 빈 리스트 리턴
+            return new ArrayList<>();
+        }
+        return getCommentResponses(member, allParent, list, commentReplies);  // commentReplies = 2,5 번
     }
 
     public String changeComment(Comment comment, Member member, Boolean allParent) {
@@ -190,7 +221,7 @@ public class CommentService {
            comment.setMember(member);
        }
         Comment savedComment = commentRepository.save(comment);
-        CommentReply commentReply = new CommentReply(savedComment.getId(), 0L, true);
+        CommentReply commentReply = new CommentReply(savedComment.getId(), 0L);
         commentReplyRepository.save(commentReply);
 
         return commentRepository.save(savedComment).getId();
@@ -224,16 +255,16 @@ public class CommentService {
         commentRepository.save(comment);
     }
 
-//    // 댓글 신고
-//    public void reportComment(CommentReportDto commentReportDto, Long commentId){
-//        String reason = commentReportDto.getReason();
-//        Member member = memberService.findById(commentReportDto.getUserId());
-//        Comment comment = findCommentById(commentId);
-//        Report report = commentReportDto.toEntity(reason, member, comment);
-//        Report savedReport = reportRepository.save(report);
-//        comment.addReport(savedReport);
-//        commentRepository.save(comment);
-//    }
+    // 댓글 신고
+    public void reportComment(CommentReportDto commentReportDto, Long commentId){
+        String reason = commentReportDto.getReason();
+        Member member = memberService.findById(commentReportDto.getUserId());
+        Comment comment = findCommentById(commentId);
+        Report report = commentReportDto.toEntity(reason, member, comment);
+        Report savedReport = reportRepository.save(report);
+        comment.addReport(savedReport);
+        commentRepository.save(comment);
+    }
 
     // 대댓글 등록
     public Long saveReply(CommentRequest commentRequest, Long commentId) {
@@ -247,7 +278,7 @@ public class CommentService {
         reply.setMember(member);
         Comment savedReply = commentRepository.save(reply);
 
-        CommentReply commentReply = new CommentReply(savedReply.getId(), commentId, false);
+        CommentReply commentReply = new CommentReply(savedReply.getId(), commentId);
         commentReplyRepository.save(commentReply);
 
         return savedReply.getId();

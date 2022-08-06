@@ -1,7 +1,6 @@
 package com.example.commentpractice.dto;
 
 import com.example.commentpractice.entity.comment.Comment;
-import com.example.commentpractice.entity.report.Report;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
@@ -18,7 +17,7 @@ public class CommentResponse {
     private String comment; // 댓글
     private Boolean deleteStatus; // 삭제여부
     private Boolean secret;
-    private List<Report> reports;
+//    private List<Report> reports;
     private List<CommentResponse> replies;
 
     public static CommentResponse of(Comment comment, List<CommentResponse> replies) {

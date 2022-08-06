@@ -23,12 +23,9 @@ public class CommentReply {
 
     private Long parentId;
 
-    private Boolean parent;
-
     @Builder
-    public CommentReply(Long commentId, Long parentId, Boolean parentStatus) {
+    public CommentReply(Long commentId, Long parentId) {
         this.commentId = commentId;
         this.parentId = parentId;
-        this.parent = parentStatus;
     }
 }
