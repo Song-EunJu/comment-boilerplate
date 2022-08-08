@@ -31,13 +31,29 @@ public class CommentService {
     private final ReportRepository reportRepository;
     private final MemberService memberService;
     private final CommentReplyRepository commentReplyRepository;
-    private List<Comment> allComment;
-    private List<CommentReply> allCommentReply;
+    private List<CommentReply> filteredCommentsReplies;
+
+    private List<Comment> comments;
+
+    private List<CommentReply> commentReplies;
 
     @Bean
-    public void initComments(){
-        allComment = commentRepository.findAll();
-        allCommentReply = commentReplyRepository.findAll();
+    public void init(){
+        comments = commentRepository.findAll();
+        commentReplies = commentReplyRepository.findAll();
+        filteredCommentsReplies = new ArrayList<>(commentReplies);
+    }
+
+    public List<Comment> getComments() {
+        return comments;
+    }
+
+    public List<CommentReply> getCommentReplies() {
+        return commentReplies;
+    }
+
+    public List<CommentReply> getFilteredCommentReplies(){
+        return filteredCommentsReplies;
     }
 
     public void confirmUpdateAuth(Comment comment, Member member) {
@@ -59,7 +75,7 @@ public class CommentService {
 
     // 댓글 존재 여부 확인
     public Comment findCommentById(Long id){
-        return allComment
+        return getComments()
                 .stream()
                 .filter(comment -> comment.getId() == id)
                 .findFirst()
@@ -76,39 +92,36 @@ public class CommentService {
          * 2. removeIf 를 하면 또 내장함수에서 while 문으로 전체 원소를 돌기 때문에 얘는 쓰지 않기로
          * 3. for문을 돌면서 부모 댓글일경우에 다 뛰어넘고, 부모댓글보다 커지는 경우 break
          */
-
         /*
         * 엔티티 하나만 조회할 때는 즉시 로딩으로 설정하면 연관된 팀도 한 쿼리로 가져오도록 최적화 되지만 JPQL을 사용하면 이야기가 달라집니다.
         * JPQL은 연관관계를 즉시로딩으로 설정하는 것과 상관없이 JPQL 자체만으로 SQL로 그대로 번역됩니다.
         * */
-
         /*
             if (그 빼놓은 리스트에 있으면)
                 걔를 꺼내서 반환
             else (만약 리스트에 없으면)
                 아래 로직으로 계산필요
          */
-
-        List<CommentReply> filteredCommentReplies = new ArrayList<>();
-
-        // 일단 부모 번호로 소팅하기
-        allCommentReply.sort((o1,o2) -> (int) (o1.getParentId() - o2.getParentId()));
-
-        for(int i=0;i<allCommentReply.size();i++){
-            CommentReply commentReply = allCommentReply.get(i);
-            if(commentReply.getParentId() == 0) // 부모 댓글일 경우 안돌아도됨....
+        List<CommentReply> finalCommentReplies = new ArrayList<>();
+        for(int i=0;i<getFilteredCommentReplies().size();i++){
+            CommentReply commentReply = filteredCommentsReplies.get(i);
+            if(commentReply.getParentId() == 0) // 부모 댓글일 경우 안돌아도됨
                 continue;
-            if(commentReply.getParentId() == id)
-                filteredCommentReplies.add(commentReply);
+
+            if(commentReply.getParentId() == id) { // 찾는 번호와 같은 경우 리스트에 담음
+                finalCommentReplies.add(commentReply);
+                filteredCommentsReplies.remove(commentReply); // 찾은 애는 리스트에서 빼버림
+            }
             else if(commentReply.getParentId() > id) // 찾는 id 번호보다 부모 번호가 커지는 경우 break
                 break;
         }
-        return filteredCommentReplies;
+
+        return finalCommentReplies;
     }
     
     // 해당 댓글이 CommentReply 에 있는지 확인
     public CommentReply findCommentReplyByCommentId(Long id){
-        return allCommentReply
+        return getCommentReplies()
                 .stream()
                 .filter(commentReply -> commentReply.getCommentId() == id)
                 .findFirst()
@@ -120,19 +133,21 @@ public class CommentService {
     public List<CommentResponse> getComments(Long userId, Boolean allParent) {
         Member member = memberService.findById(userId); // 조회하려는 사람
 
-        List<CommentReply> filteredCommentReplies = allCommentReply
+        List<CommentReply> commentReplies = getCommentReplies()
                 .stream()
-                .filter(cp -> cp.getParentId() == 0) // 최상위 댓글들만 필터링
-                .collect(Collectors.toList());
+                .filter(cp -> cp.getParentId() == 0)
+                .collect(Collectors.toList()); // 최상위 댓글들만 필터링
+
+        getFilteredCommentReplies().sort((o1,o2) -> (int) (o1.getParentId() - o2.getParentId())); // 최상위 댓글들 중 부모댓글로 정렬
 
         List<CommentResponse> finalList = new ArrayList<>(); // 최종 리턴할 리스트
 
-        return getCommentResponses(member, allParent, finalList, filteredCommentReplies);
+        return getCommentResponses(member, allParent, finalList, commentReplies);
     }
 
-    private List<CommentResponse> getCommentResponses(Member member, Boolean allParent, List<CommentResponse> list, List<CommentReply> commentReplies) {
-        for(int i=0;i<commentReplies.size();i++) {
-            CommentReply cr = commentReplies.get(i);
+    private List<CommentResponse> getCommentResponses(Member member, Boolean allParent, List<CommentResponse> list, List<CommentReply> filteredCommentReplies) {
+        for(int i=0;i<filteredCommentReplies.size();i++) {
+            CommentReply cr = filteredCommentReplies.get(i);
             Comment reply = findCommentById(cr.getCommentId()); // 최상위 댓글 객체 1번
 
             List<CommentResponse> response = getReplies(reply, member, allParent); // 1번 댓글의 대댓글 받아오기
@@ -146,7 +161,6 @@ public class CommentService {
     public List<CommentResponse> getReplies(Comment parent, Member member, Boolean allParent){ // 1번 댓글
         List<CommentResponse> list = new ArrayList<>();
         List<CommentReply> commentReplies = findCommentReplyByParentId(parent.getId()); // 1번 댓글을 부모 댓글로 갖는 자식 댓글리스트
-
         if (commentReplies.isEmpty()) { // 대댓글의 끝까지 온 경우 빈 리스트 리턴
             return new ArrayList<>();
         }
@@ -211,15 +225,14 @@ public class CommentService {
 
     // 댓글 등록
     public Long saveComment(CommentRequest commentRequest) {
-       Comment comment = commentRequest.toEntity();
-       if(commentRequest.getUserId() == null){ // 가입하지 않고 익명댓글 다는 경우
-            Member member = memberService.saveGuest(commentRequest);
-            comment.setMember(member);
-       }
-       else {
-           Member member = memberService.findById(commentRequest.getUserId());
-           comment.setMember(member);
-       }
+        Comment comment = commentRequest.toEntity();
+        Member member;
+        if(commentRequest.getUserId() == null) // 가입하지 않고 익명댓글 다는 경우
+            member = memberService.saveGuest(commentRequest);
+        else
+            member = memberService.findById(commentRequest.getUserId());
+
+        comment.setMember(member);
         Comment savedComment = commentRepository.save(comment);
         CommentReply commentReply = new CommentReply(savedComment.getId(), 0L);
         commentReplyRepository.save(commentReply);
