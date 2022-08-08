@@ -31,15 +31,29 @@ public class CommentService {
     private final ReportRepository reportRepository;
     private final MemberService memberService;
     private final CommentReplyRepository commentReplyRepository;
-    private List<Comment> allComment;
-    private List<CommentReply> allCommentReply;
-    private List<CommentReply> filteredCommentReplies;
+    private List<CommentReply> filteredCommentsReplies;
+
+    private List<Comment> comments;
+
+    private List<CommentReply> commentReplies;
 
     @Bean
-    public void initComments(){
-        allComment = commentRepository.findAll();
-        allCommentReply = commentReplyRepository.findAll();
-        filteredCommentReplies = new ArrayList<>(allCommentReply);
+    public void init(){
+        comments = commentRepository.findAll();
+        commentReplies = commentReplyRepository.findAll();
+        filteredCommentsReplies = new ArrayList<>(commentReplies);
+    }
+
+    public List<Comment> getComments() {
+        return comments;
+    }
+
+    public List<CommentReply> getCommentReplies() {
+        return commentReplies;
+    }
+
+    public List<CommentReply> getFilteredCommentReplies(){
+        return filteredCommentsReplies;
     }
 
     public void confirmUpdateAuth(Comment comment, Member member) {
@@ -61,7 +75,7 @@ public class CommentService {
 
     // 댓글 존재 여부 확인
     public Comment findCommentById(Long id){
-        return allComment
+        return getComments()
                 .stream()
                 .filter(comment -> comment.getId() == id)
                 .findFirst()
@@ -89,15 +103,14 @@ public class CommentService {
                 아래 로직으로 계산필요
          */
         List<CommentReply> finalCommentReplies = new ArrayList<>();
-
-        for(int i=0;i<filteredCommentReplies.size();i++){
-            CommentReply commentReply = filteredCommentReplies.get(i);
+        for(int i=0;i<getFilteredCommentReplies().size();i++){
+            CommentReply commentReply = filteredCommentsReplies.get(i);
             if(commentReply.getParentId() == 0) // 부모 댓글일 경우 안돌아도됨
                 continue;
 
             if(commentReply.getParentId() == id) { // 찾는 번호와 같은 경우 리스트에 담음
                 finalCommentReplies.add(commentReply);
-                filteredCommentReplies.remove(commentReply); // 찾은 애는 리스트에서 빼버림
+                filteredCommentsReplies.remove(commentReply); // 찾은 애는 리스트에서 빼버림
             }
             else if(commentReply.getParentId() > id) // 찾는 id 번호보다 부모 번호가 커지는 경우 break
                 break;
@@ -108,7 +121,7 @@ public class CommentService {
     
     // 해당 댓글이 CommentReply 에 있는지 확인
     public CommentReply findCommentReplyByCommentId(Long id){
-        return allCommentReply
+        return getCommentReplies()
                 .stream()
                 .filter(commentReply -> commentReply.getCommentId() == id)
                 .findFirst()
@@ -120,12 +133,12 @@ public class CommentService {
     public List<CommentResponse> getComments(Long userId, Boolean allParent) {
         Member member = memberService.findById(userId); // 조회하려는 사람
 
-        List<CommentReply> commentReplies = allCommentReply
+        List<CommentReply> commentReplies = getCommentReplies()
                 .stream()
                 .filter(cp -> cp.getParentId() == 0)
                 .collect(Collectors.toList()); // 최상위 댓글들만 필터링
 
-        filteredCommentReplies.sort((o1,o2) -> (int) (o1.getParentId() - o2.getParentId())); // 최상위 댓글들 중 부모댓글로 정렬
+        getFilteredCommentReplies().sort((o1,o2) -> (int) (o1.getParentId() - o2.getParentId())); // 최상위 댓글들 중 부모댓글로 정렬
 
         List<CommentResponse> finalList = new ArrayList<>(); // 최종 리턴할 리스트
 
@@ -148,7 +161,6 @@ public class CommentService {
     public List<CommentResponse> getReplies(Comment parent, Member member, Boolean allParent){ // 1번 댓글
         List<CommentResponse> list = new ArrayList<>();
         List<CommentReply> commentReplies = findCommentReplyByParentId(parent.getId()); // 1번 댓글을 부모 댓글로 갖는 자식 댓글리스트
-
         if (commentReplies.isEmpty()) { // 대댓글의 끝까지 온 경우 빈 리스트 리턴
             return new ArrayList<>();
         }
@@ -213,15 +225,14 @@ public class CommentService {
 
     // 댓글 등록
     public Long saveComment(CommentRequest commentRequest) {
-       Comment comment = commentRequest.toEntity();
-       if(commentRequest.getUserId() == null){ // 가입하지 않고 익명댓글 다는 경우
-            Member member = memberService.saveGuest(commentRequest);
-            comment.setMember(member);
-       }
-       else {
-           Member member = memberService.findById(commentRequest.getUserId());
-           comment.setMember(member);
-       }
+        Comment comment = commentRequest.toEntity();
+        Member member;
+        if(commentRequest.getUserId() == null) // 가입하지 않고 익명댓글 다는 경우
+            member = memberService.saveGuest(commentRequest);
+        else
+            member = memberService.findById(commentRequest.getUserId());
+
+        comment.setMember(member);
         Comment savedComment = commentRepository.save(comment);
         CommentReply commentReply = new CommentReply(savedComment.getId(), 0L);
         commentReplyRepository.save(commentReply);
