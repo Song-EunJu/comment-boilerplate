@@ -40,7 +40,7 @@ public class Member {
 
     @JsonBackReference
     @OneToMany(mappedBy = "member", targetEntity = Comment.class)
-    private List<Comment> comments = new ArrayList<>(); // list 보다 set 이 좋다고 했는데 뭐엿지
+    private List<Comment> comments = new ArrayList<>();
 
     @JsonBackReference
     @OneToMany(mappedBy = "member", targetEntity = Report.class)

@@ -17,7 +17,6 @@ import static com.example.commentpractice.dto.MemberRequest.toGuestEntity;
 public class MemberService {
 
     private final PasswordEncoder passwordEncoder;
-
     private final MemberRepository memberRepository;
     public Long saveMember(MemberRequest userDto) {
         String role = userDto.getRole();

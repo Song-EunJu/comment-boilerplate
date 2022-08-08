@@ -19,12 +19,6 @@ import java.util.List;
 public class CommentController {
     private final CommentService commentService;
 
-    @GetMapping("/comments2")
-    public ResponseEntity<List<Comment>> getComments() {
-        List<Comment> comments = commentService.findAll();
-        return ResponseEntity.ok().body(comments);
-    }
-
     // 댓글 조회
     @GetMapping("/comments")
     public ResponseEntity<List<CommentResponse>> getComments(

@@ -50,7 +50,7 @@ public class CommentResponse {
             if (comment.getDeleteStatus()) // 삭제 댓글처리
                 return "삭제된 댓글입니다";
             else { // 비밀 댓글 조회처리
-                if (comment.getSecret()) { // 비댓인 경우
+               if (comment.getSecret()) { // 비댓인 경우
                     if (comment.getMember().getRole() != Role.GUEST) { // 게스트 유저가 아닌경우
                         if (commentWriterId != memberId) { // 댓글작성자!=조회자
                             if (option) { // 최상위 부모 댓글까지 조회 허용
@@ -58,9 +58,8 @@ public class CommentResponse {
                                     if (comment.getMember().getId() == memberId) { // 부모댓글 작성자 == 조회자
                                         return comment.getComment();
                                     } else { // 부모댓글 작성자 != 조회자인 경우
-                                        if (comment.getParent() == comment) { // 최상위 댓글까지 왔는데도 return 안됐으니까 비댓
+                                        if (comment.getParent() == comment)  // 최상위 댓글까지 왔는데도 return 안됐으니까 비댓
                                             return "비밀 댓글입니다";
-                                        }
                                         comment = comment.getParent(); // 다시 한 계층 더 올라감
                                     }
                                 }
