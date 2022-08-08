@@ -33,11 +33,13 @@ public class CommentService {
     private final CommentReplyRepository commentReplyRepository;
     private List<Comment> allComment;
     private List<CommentReply> allCommentReply;
+    private List<CommentReply> filteredCommentReplies;
 
     @Bean
     public void initComments(){
-        allComment = (ArrayList<Comment>) commentRepository.findAll();
+        allComment = commentRepository.findAll();
         allCommentReply = commentReplyRepository.findAll();
+        filteredCommentReplies = new ArrayList<>(allCommentReply);
     }
 
     public void confirmUpdateAuth(Comment comment, Member member) {
@@ -86,10 +88,8 @@ public class CommentService {
             else (만약 리스트에 없으면)
                 아래 로직으로 계산필요
          */
-        List<CommentReply> filteredCommentReplies = new ArrayList<>(allCommentReply);
         List<CommentReply> finalCommentReplies = new ArrayList<>();
 
-        filteredCommentReplies.sort((o1,o2) -> (int) (o1.getParentId() - o2.getParentId()));
         for(int i=0;i<filteredCommentReplies.size();i++){
             CommentReply commentReply = filteredCommentReplies.get(i);
             if(commentReply.getParentId() == 0) // 부모 댓글일 경우 안돌아도됨
@@ -102,6 +102,7 @@ public class CommentService {
             else if(commentReply.getParentId() > id) // 찾는 id 번호보다 부모 번호가 커지는 경우 break
                 break;
         }
+
         return finalCommentReplies;
     }
     
@@ -119,19 +120,21 @@ public class CommentService {
     public List<CommentResponse> getComments(Long userId, Boolean allParent) {
         Member member = memberService.findById(userId); // 조회하려는 사람
 
-        List<CommentReply> filteredCommentReplies = allCommentReply
+        List<CommentReply> commentReplies = allCommentReply
                 .stream()
-                .filter(cp -> cp.getParentId() == 0) // 최상위 댓글들만 필터링
-                .collect(Collectors.toList());
+                .filter(cp -> cp.getParentId() == 0)
+                .collect(Collectors.toList()); // 최상위 댓글들만 필터링
+
+        filteredCommentReplies.sort((o1,o2) -> (int) (o1.getParentId() - o2.getParentId())); // 최상위 댓글들 중 부모댓글로 정렬
 
         List<CommentResponse> finalList = new ArrayList<>(); // 최종 리턴할 리스트
 
-        return getCommentResponses(member, allParent, finalList, filteredCommentReplies);
+        return getCommentResponses(member, allParent, finalList, commentReplies);
     }
 
-    private List<CommentResponse> getCommentResponses(Member member, Boolean allParent, List<CommentResponse> list, List<CommentReply> commentReplies) {
-        for(int i=0;i<commentReplies.size();i++) {
-            CommentReply cr = commentReplies.get(i);
+    private List<CommentResponse> getCommentResponses(Member member, Boolean allParent, List<CommentResponse> list, List<CommentReply> filteredCommentReplies) {
+        for(int i=0;i<filteredCommentReplies.size();i++) {
+            CommentReply cr = filteredCommentReplies.get(i);
             Comment reply = findCommentById(cr.getCommentId()); // 최상위 댓글 객체 1번
 
             List<CommentResponse> response = getReplies(reply, member, allParent); // 1번 댓글의 대댓글 받아오기
