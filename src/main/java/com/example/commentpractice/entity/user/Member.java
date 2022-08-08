@@ -1,6 +1,5 @@
 package com.example.commentpractice.entity.user;
 
-import com.example.commentpractice.entity.Role;
 import com.example.commentpractice.entity.comment.Comment;
 import com.example.commentpractice.entity.report.Report;
 import com.fasterxml.jackson.annotation.JsonBackReference;
@@ -45,5 +44,4 @@ public class Member {
     @JsonBackReference
     @OneToMany(mappedBy = "member", targetEntity = Report.class)
     private List<Report> reports = new ArrayList<>();
-
 }

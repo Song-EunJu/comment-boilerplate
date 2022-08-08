@@ -1,8 +1,9 @@
 package com.example.commentpractice.repository;
 
-import com.example.commentpractice.entity.comment.Comment;
+import com.example.commentpractice.entity.comment.CommentReply;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
-public interface CommentRepository extends JpaRepository<Comment, Long> {
+@Repository
+public interface CommentReplyRepository extends JpaRepository<CommentReply, Long> {
 }

@@ -1,6 +1,6 @@
 package com.example.commentpractice.dto;
 
-import com.example.commentpractice.entity.Role;
+import com.example.commentpractice.entity.user.Role;
 import com.example.commentpractice.entity.user.Member;
 import lombok.AllArgsConstructor;
 import lombok.Builder;

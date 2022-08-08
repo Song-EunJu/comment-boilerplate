@@ -16,7 +16,6 @@ public class CommentRequest {
                 .comment(comment)
                 .secret(secret)
                 .deleteStatus(false)
-                .depth(0L)
                 .build();
     }
 }
