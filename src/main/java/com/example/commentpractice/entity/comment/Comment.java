@@ -57,7 +57,7 @@ public class Comment extends BaseTimeEntity {
     }
 
 
-    public void updateComment(CommentRequest commentRequest) {
+    public void updateComment(CommentRequest.Create commentRequest) {
         if (commentRequest.getComment() != null)
             this.comment = commentRequest.getComment();
         if (commentRequest.getSecret() != null)

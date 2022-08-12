@@ -1,7 +1,5 @@
 package com.example.commentpractice.service;
 
-import com.example.commentpractice.dto.CommentDeleteDto;
-import com.example.commentpractice.dto.CommentReportDto;
 import com.example.commentpractice.dto.CommentRequest;
 import com.example.commentpractice.dto.CommentResponse;
 import com.example.commentpractice.entity.comment.Comment;
@@ -22,7 +20,6 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -91,10 +88,12 @@ public class CommentService {
         Member member = memberService.findById(userId); // 조회자
 
         // 부모댓글 번호로 정렬된 댓글들 중 최상위 (부모) 댓글들만 필터링
-        List<CommentReply> parentComments = commentReplies
-                .stream()
-                .filter(cp -> cp.getParentId() == 0)
-                .collect(Collectors.toList());
+        List<CommentReply> parentComments = new ArrayList<>();
+        for(CommentReply commentReply: commentReplies) {
+            if (commentReply.getParentId() != 0)
+                break;
+            parentComments.add(commentReply);
+        }
 
         List<CommentResponse> finalList = new ArrayList<>(); // 최종 리턴할 리스트
 
@@ -208,7 +207,7 @@ public class CommentService {
     }
 
     // 댓글 등록
-    public Long saveComment(CommentRequest commentRequest) {
+    public Long saveComment(CommentRequest.Create commentRequest) {
         Comment comment = commentRequest.toEntity();
         Member member;
         if(commentRequest.getUserId() == null) // 가입하지 않고 익명댓글 다는 경우
@@ -225,7 +224,7 @@ public class CommentService {
     }
 
     // 댓글 수정
-    public void updateComment(CommentRequest commentRequest, Long commentId) {
+    public void updateComment(CommentRequest.Create commentRequest, Long commentId) {
         Comment comment = findCommentById(commentId);
 
         if(commentRequest.getPassword() != null) // 익명 댓글 수정하는 경우 비밀번호 확인 - 비밀번호만 입력하면 됨
@@ -242,7 +241,7 @@ public class CommentService {
     }
 
     // 댓글 삭제
-    public void deleteComment(CommentDeleteDto commentDeleteDto, Long commentId) {
+    public void deleteComment(CommentRequest.Delete commentDeleteDto, Long commentId) {
         Comment comment = findCommentById(commentId);
 
         if(commentDeleteDto.getPassword() != null) // 익명 댓글 삭제하는 경우 비밀번호 확인
@@ -256,7 +255,7 @@ public class CommentService {
     }
 
     // 댓글 신고
-    public void reportComment(CommentReportDto commentReportDto, Long commentId){
+    public void reportComment(CommentRequest.ReportCreate commentReportDto, Long commentId){
         String reason = commentReportDto.getReason();
         Member member = memberService.findById(commentReportDto.getUserId());
         Comment comment = findCommentById(commentId);
@@ -267,7 +266,7 @@ public class CommentService {
     }
 
     // 대댓글 등록
-    public Long saveReply(CommentRequest commentRequest, Long commentId) {
+    public Long saveReply(CommentRequest.Create commentRequest, Long commentId) {
         Comment reply = commentRequest.toEntity();
         Member member;
         if(commentRequest.getUserId() == null) // 가입하지 않은 경우

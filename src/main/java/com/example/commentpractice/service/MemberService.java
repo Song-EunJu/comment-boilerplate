@@ -32,7 +32,7 @@ public class MemberService {
         return memberRepository.save(member).getId();
     }
 
-    public Member saveGuest(CommentRequest commentRequest) {
+    public Member saveGuest(CommentRequest.Create commentRequest) {
         String nickname = commentRequest.getNickname();
         String encryptedPwd = passwordEncoder.encode(commentRequest.getPassword());
         Member member = toGuestEntity(encryptedPwd, nickname);
