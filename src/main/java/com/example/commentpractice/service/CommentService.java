@@ -36,22 +36,10 @@ public class CommentService {
     private List<CommentReply> commentReplies;
     private List<CommentReply> filteredCommentReplies;
 
-    // 최상위 댓글들만 필터링
-//    List<CommentReply> parentComments = commentReplies
-//            .stream()
-//            .filter(cp -> cp.getParentId() == 0)
-//            .collect(Collectors.toList());
-//
-//    // 최상위 댓글들 중 부모댓글로 정렬
-//        parentComments.sort((o1,o2) -> (int) (o1.getParentId() - o2.getParentId()));
-
-
     @Bean
     public void init(){
         comments = commentRepository.findAll();
         commentReplies = commentReplyRepository.findAll(Sort.by(Sort.Direction.ASC, "parentId"));
-
-        // 댓글추가 시 filteredCommentReplies 에 넣기 위해서는 초기화 되어있어야 함
         filteredCommentReplies = new ArrayList<>(commentReplies);
     }
 
@@ -84,39 +72,28 @@ public class CommentService {
 
     // 댓글 존재 여부 확인
     public Comment findCommentById(Long id){
-        for(Comment comment: comments){
+        for(Comment comment: comments)
             if(comment.getId() == id)
                 return comment;
-        }
         throw new ResponseStatusException(HttpStatus.NOT_FOUND, "해당하는 댓글 번호가 없습니다");
     }
 
     // CommentReply 존재 여부 확인
     public CommentReply findCommentReplyByCommentId(Long id){
-        for(CommentReply commentReply: commentReplies){
+        for(CommentReply commentReply: commentReplies)
             if(commentReply.getCommentId() == id)
                 return commentReply;
-        }
         throw new ResponseStatusException(HttpStatus.NOT_FOUND, "해당하는 댓글 번호가 없습니다");
     }
 
     // 전체 댓글 받아오는 함수
     public List<CommentResponse> getComments(Long userId, Boolean allParent) {
         Member member = memberService.findById(userId); // 조회자
-        List<CommentResponse> list = new ArrayList<>();
 
         // 부모댓글 번호로 정렬된 댓글들 중 최상위 (부모) 댓글들만 필터링
         List<CommentReply> parentComments = commentReplies
                 .stream()
                 .filter(cp -> cp.getParentId() == 0)
-                .map(cp -> {
-                    Comment reply = findCommentById(cp.getCommentId()); // ex) 최상위 댓글 객체 1번
-                    List<CommentResponse> response = getReplies(reply, member, allParent); // 1번 댓글의 대댓글 받아오기
-
-                    CommentResponse commentResponse = CommentResponse.of(reply, response);
-                    commentResponse.setComment(changeComment(reply, member, allParent)); // 반환할 때 문자열 변경
-                    list.add(commentResponse);
-                })
                 .collect(Collectors.toList());
 
         List<CommentResponse> finalList = new ArrayList<>(); // 최종 리턴할 리스트
@@ -156,19 +133,15 @@ public class CommentService {
     public List<CommentReply> findCommentReplyByParentId(Long id){
         List<CommentReply> finalCommentReplies = new ArrayList<>();
 
-        // for문을 돌 때마다 리스트에 담긴 댓글들은 remove되므로 size가 계속 줄어듦
-        for(int i=0;i<filteredCommentReplies.size();i++){
+        for(int i=0;i<filteredCommentReplies.size();i++){ // for문을 돌 때마다 리스트에 담긴 댓글들은 remove되므로 size가 계속 줄어듦
             CommentReply commentReply = filteredCommentReplies.get(i);
 
-            // 부모 댓글일 경우 안돌아도됨
-            if(commentReply.getParentId() == 0)
+            if(commentReply.getParentId() == 0) // 부모 댓글일 경우 안돌아도됨
                 continue;
 
-            // 찾는 번호와 같은 경우 리스트에 담음
-            if(commentReply.getParentId() == id) {
+            if(commentReply.getParentId() == id) { // 찾는 번호와 같은 경우 리스트에 담음
                 finalCommentReplies.add(commentReply);
-                // 찾은 애는 리스트에서 빼버림
-                filteredCommentReplies.remove(commentReply);
+                filteredCommentReplies.remove(commentReply); // 찾은 애는 리스트에서 빼버림
                 i--; // 지우면서 인덱스 하나 줄여줘야함 (줄여주지 않으면, 댓글 추가했을 때 추가한 댓글이 안보임)
             }
             else if(commentReply.getParentId() > id) // 찾는 id 번호보다 부모 번호가 커지는 경우 break
