@@ -1,6 +1,5 @@
 package com.example.commentpractice.service;
 
-import com.example.commentpractice.dto.CommentDeleteDto;
 import com.example.commentpractice.dto.CommentReportDto;
 import com.example.commentpractice.dto.CommentRequest;
 import com.example.commentpractice.dto.CommentResponse;
@@ -213,12 +212,10 @@ public class CommentService {
         while (parentComment.getMember().getId() != memberId) {  // 부모댓글 작성자 != 조회자인 동안
             if (cr.getParentId() == 0)
                 return "비밀 댓글입니다";
-//                return "6";
             parentComment = findCommentById(cr.getParentId()); // 다시 한 계층 더 올라감
             cr = findCommentReplyByCommentId(parentComment.getId());
         }
         return comment.getComment(); // while문을 빠져나온 경우 부모댓글 작성자 == 조회자인 경우
-//        return "7";
     }
 
 
@@ -230,7 +227,7 @@ public class CommentService {
     }
 
     // 댓글 등록
-    public Long saveComment(CommentRequest commentRequest) {
+    public Long saveComment(CommentRequest.Create commentRequest) {
         Comment comment = commentRequest.toEntity();
         Member member;
         if(commentRequest.getUserId() == null) // 가입하지 않고 익명댓글 다는 경우
@@ -247,7 +244,7 @@ public class CommentService {
     }
 
     // 댓글 수정
-    public void updateComment(CommentRequest commentRequest, Long commentId) {
+    public void updateComment(CommentRequest.Create commentRequest, Long commentId) {
         Comment comment = findCommentById(commentId);
 
         if(commentRequest.getPassword() != null) // 익명 댓글 수정하는 경우 비밀번호 확인 - 비밀번호만 입력하면 됨
@@ -264,7 +261,7 @@ public class CommentService {
     }
 
     // 댓글 삭제
-    public void deleteComment(CommentDeleteDto commentDeleteDto, Long commentId) {
+    public void deleteComment(CommentRequest.Delete commentDeleteDto, Long commentId) {
         Comment comment = findCommentById(commentId);
 
         if(commentDeleteDto.getPassword() != null) // 익명 댓글 삭제하는 경우 비밀번호 확인
@@ -289,7 +286,7 @@ public class CommentService {
     }
 
     // 대댓글 등록
-    public Long saveReply(CommentRequest commentRequest, Long commentId) {
+    public Long saveReply(CommentRequest.Create commentRequest, Long commentId) {
         Comment reply = commentRequest.toEntity();
         Member member;
         if(commentRequest.getUserId() == null) // 가입하지 않은 경우
