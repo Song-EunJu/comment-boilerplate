@@ -17,7 +17,6 @@ import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.ArrayList;
@@ -98,19 +97,18 @@ public class CommentService {
         }
 
         List<CommentResponse> finalList = new ArrayList<>(); // 최종 리턴할 리스트
-
         return getCommentResponses(member, allParent, finalList, parentComments);
     }
 
     // 신고 내역은 부모댓글뿐만 아니라 모든 댓글이 다 보여야 함, 댓글 각각을 돌 때마다 필요 !!
 
-    @Transactional
     List<CommentResponse> getCommentResponses(Member member, Boolean allParent, List<CommentResponse> list,
                                               List<CommentReply> parentComments) {
         // 최상위 댓글 중 부모댓글로 정렬한 리스트로 for문 순회
         for(int i=0;i<parentComments.size();i++) {
             CommentReply cr = parentComments.get(i);
             Comment reply = findCommentById(cr.getCommentId()); // ex) 최상위 댓글 객체 1번
+            System.out.println(reply.getReports().size());
             List<CommentResponse> response = getReplies(reply, member, allParent); // 1번 댓글의 대댓글 받아오기
             CommentResponse commentResponse = CommentResponse.of(reply, response, ReportResponse.toReportList(reply.getReports()));
             commentResponse.setComment(changeComment(reply, member, allParent)); // 반환할 때 문자열 변경
@@ -191,7 +189,6 @@ public class CommentService {
     // 모든 상위 부모댓글 조회 가능
     public String permitAllParent(Comment comment, Long memberId) {
         Comment parentComment = comment;
-
         CommentReply cr = findCommentReplyByCommentId(parentComment.getId()); // 부모댓글의 id
 
         while (parentComment.getMember().getId() != memberId) {  // 부모댓글 작성자 != 조회자인 동안
@@ -265,10 +262,8 @@ public class CommentService {
         Member member = memberService.findById(commentReportDto.getUserId());
         Comment comment = findCommentById(commentId);
         Report report = commentReportDto.toEntity(reason, member, comment);
-        System.out.println(report.getComment());
         reportRepository.save(report);
         commentRepository.save(comment);
-        System.out.println(report.getCreated());
     }
 
     // 대댓글 등록

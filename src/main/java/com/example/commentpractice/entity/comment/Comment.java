@@ -43,7 +43,7 @@ public class Comment extends BaseTimeEntity {
     private Member member;
 
     @JsonBackReference
-    @OneToMany(targetEntity = Report.class)
+    @OneToMany(mappedBy = "comment", targetEntity = Report.class)
     private List<Report> reports = new ArrayList<>();
 
     public void setMember(Member member) {
@@ -61,8 +61,4 @@ public class Comment extends BaseTimeEntity {
         if (commentRequest.getSecret() != null)
             this.secret = commentRequest.getSecret();
     }
-//
-//    public void addReport(Report report) {
-//        reports.add(report);
-//    }
 }
