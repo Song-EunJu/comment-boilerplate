@@ -18,8 +18,9 @@ public class CommentResponse {
     private Boolean deleteStatus; // 삭제여부
     private Boolean secret;
     private List<CommentResponse> replies;
+    private List<ReportResponse> reports;
 
-    public static CommentResponse of(Comment comment, List<CommentResponse> replies) {
+    public static CommentResponse of(Comment comment, List<CommentResponse> replies, List<ReportResponse> reports) {
         return CommentResponse.builder()
                 .commentId(comment.getId())
                 .userId(comment.getMember().getId())
@@ -27,7 +28,7 @@ public class CommentResponse {
                 .comment(comment.getComment())
                 .deleteStatus(comment.getDeleteStatus())
                 .secret(comment.getSecret())
-//                .reports(comment.getReports())
+                .reports(reports)
                 .replies(replies)
                 .build();
     }

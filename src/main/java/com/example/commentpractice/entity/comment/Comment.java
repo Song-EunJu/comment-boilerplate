@@ -5,7 +5,6 @@ import com.example.commentpractice.entity.BaseTimeEntity;
 import com.example.commentpractice.entity.report.Report;
 import com.example.commentpractice.entity.user.Member;
 import com.fasterxml.jackson.annotation.JsonBackReference;
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -44,7 +43,6 @@ public class Comment extends BaseTimeEntity {
     private Member member;
 
     @JsonBackReference
-    @JsonIgnore
     @OneToMany(targetEntity = Report.class)
     private List<Report> reports = new ArrayList<>();
 
@@ -63,8 +61,8 @@ public class Comment extends BaseTimeEntity {
         if (commentRequest.getSecret() != null)
             this.secret = commentRequest.getSecret();
     }
-
-    public void addReport(Report report) {
-        reports.add(report);
-    }
+//
+//    public void addReport(Report report) {
+//        reports.add(report);
+//    }
 }

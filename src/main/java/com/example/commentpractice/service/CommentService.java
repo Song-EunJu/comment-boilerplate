@@ -2,6 +2,7 @@ package com.example.commentpractice.service;
 
 import com.example.commentpractice.dto.CommentRequest;
 import com.example.commentpractice.dto.CommentResponse;
+import com.example.commentpractice.dto.ReportResponse;
 import com.example.commentpractice.entity.comment.Comment;
 import com.example.commentpractice.entity.comment.CommentReply;
 import com.example.commentpractice.entity.report.Report;
@@ -16,6 +17,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.ArrayList;
@@ -100,14 +102,17 @@ public class CommentService {
         return getCommentResponses(member, allParent, finalList, parentComments);
     }
 
-    private List<CommentResponse> getCommentResponses(Member member, Boolean allParent, List<CommentResponse> list, List<CommentReply> parentComments) {
+    // 신고 내역은 부모댓글뿐만 아니라 모든 댓글이 다 보여야 함, 댓글 각각을 돌 때마다 필요 !!
+
+    @Transactional
+    List<CommentResponse> getCommentResponses(Member member, Boolean allParent, List<CommentResponse> list,
+                                              List<CommentReply> parentComments) {
         // 최상위 댓글 중 부모댓글로 정렬한 리스트로 for문 순회
         for(int i=0;i<parentComments.size();i++) {
             CommentReply cr = parentComments.get(i);
             Comment reply = findCommentById(cr.getCommentId()); // ex) 최상위 댓글 객체 1번
             List<CommentResponse> response = getReplies(reply, member, allParent); // 1번 댓글의 대댓글 받아오기
-
-            CommentResponse commentResponse = CommentResponse.of(reply, response);
+            CommentResponse commentResponse = CommentResponse.of(reply, response, ReportResponse.toReportList(reply.getReports()));
             commentResponse.setComment(changeComment(reply, member, allParent)); // 반환할 때 문자열 변경
             list.add(commentResponse);
         }
@@ -260,9 +265,10 @@ public class CommentService {
         Member member = memberService.findById(commentReportDto.getUserId());
         Comment comment = findCommentById(commentId);
         Report report = commentReportDto.toEntity(reason, member, comment);
-        Report savedReport = reportRepository.save(report);
-        comment.addReport(savedReport);
+        System.out.println(report.getComment());
+        reportRepository.save(report);
         commentRepository.save(comment);
+        System.out.println(report.getCreated());
     }
 
     // 대댓글 등록
