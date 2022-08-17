@@ -235,7 +235,6 @@ public class CommentService {
         Comment updatedComment = commentRepository.save(comment); // select, update 각각 1번씩 일어남
         comments.remove(comment);
         updateComments(updatedComment);
-        // 객체를 setter 로 값을 바꿔서 수정해버림
     }
 
     // 댓글 삭제

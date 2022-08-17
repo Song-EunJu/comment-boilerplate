@@ -5,6 +5,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Getter
@@ -28,7 +29,7 @@ public class CommentResponse {
                 .comment(comment.getComment())
                 .deleteStatus(comment.getDeleteStatus())
                 .secret(comment.getSecret())
-                .reports(ReportResponse.toReportList(comment.getReports()))
+                .reports(ReportResponse.toReportList(comment.getReports() == null ? new ArrayList<>() : comment.getReports()))
                 .replies(replies)
                 .build();
     }
