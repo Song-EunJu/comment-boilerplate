@@ -36,6 +36,7 @@ public class CommentService {
     @Bean
     public void init(){
         comments = commentRepository.findAllComments();
+
         commentReplies = commentReplyRepository.findAll(Sort.by(Sort.Direction.ASC, "parentId"));
         filteredCommentReplies = new ArrayList<>(commentReplies);
     }
@@ -102,10 +103,8 @@ public class CommentService {
     }
 
     // 신고 내역은 부모댓글뿐만 아니라 모든 댓글이 다 보여야 함, 댓글 각각을 돌 때마다 필요
-    List<CommentResponse> getCommentResponses(Member member, Boolean allParent, List<CommentResponse> list,
-                                              List<CommentReply> parentComments) {
-        // 최상위 댓글 중 부모댓글로 정렬한 리스트로 for문 순회
-        for(int i=0;i<parentComments.size();i++) {
+    List<CommentResponse> getCommentResponses(Member member, Boolean allParent, List<CommentResponse> list, List<CommentReply> parentComments) {
+        for(int i=0;i<parentComments.size();i++) { // 최상위 댓글 중 부모댓글로 정렬한 리스트로 for문 순회
             CommentReply cr = parentComments.get(i);
             Comment reply = findCommentById(cr.getCommentId()); // ex) 최상위 댓글 객체 1번
             List<CommentResponse> response = getReplies(reply, member, allParent); // 1번 댓글의 대댓글 받아오기
@@ -153,11 +152,10 @@ public class CommentService {
         Long memberId = member.getId(); // 조회자
         Long commentWriterId = comment.getMember().getId(); // 댓글 작성자
         Long parentCommentWriterId; // 부모 댓글 작성자
-        CommentReply cr = findCommentReplyByCommentId(comment.getId());
+        CommentReply cr = findCommentReplyByCommentId(comment.getId()); // 어떤 댓글을 수정할 지
 
-        if(cr.getParentId() == 0) { // parentId 가 0인 경우 부모댓글작성자는 댓글 작성자와 같음
+        if(cr.getParentId() == 0)  // parentId 가 0인 경우 부모댓글작성자는 댓글 작성자와 같음
             parentCommentWriterId = commentWriterId;
-        }
         else {
             Comment parent = findCommentById(cr.getParentId());
             parentCommentWriterId = parent.getMember().getId();
@@ -169,7 +167,7 @@ public class CommentService {
         if (comment.getDeleteStatus()) // 삭제 댓글처리
             return "삭제된 댓글입니다";
 
-        if (!comment.getSecret()) // 애초에 비댓이 아닌 경우
+        if (!comment.getSecret()) // 애초에 비댓이 아닌 경우 -> 비댓인 경우
             return comment.getComment();
 
         if (comment.getMember().getRole() == Role.GUEST)
@@ -194,13 +192,12 @@ public class CommentService {
             parentComment = findCommentById(cr.getParentId()); // 다시 한 계층 더 올라감
             cr = findCommentReplyByCommentId(parentComment.getId());
         }
-        return comment.getComment(); // while문을 빠져나온 경우 부모댓글 작성자 == 조회자인 경우
+        return comment.getComment(); // while 문을 빠져나온 경우 부모댓글 작성자 == 조회자인 경우
     }
 
     // 바로 상위 댓글 조회 가능
     public String permitDirectParent(Comment comment, Long parentCommentWriterId, Long memberId){
-        return parentCommentWriterId != memberId // 부모댓글작성자 != 조회자
-                ? "비밀 댓글입니다" : comment.getComment();
+        return (parentCommentWriterId != memberId) ? "비밀 댓글입니다" : comment.getComment();
     }
 
     // 댓글 등록

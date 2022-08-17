@@ -25,17 +25,6 @@ public class CommentController {
         return ResponseEntity.ok().body(comments);
     }
 
-    @GetMapping("/comments2")
-    public ResponseEntity<List<CommentResponse>> getComments2(
-            @RequestParam(value = "userId") List<Long> ids,
-            @RequestParam(value = "allParent", required = false) Boolean allParent) {
-        for(Long id:ids){
-            System.out.println(id);
-         }
-        List<CommentResponse> comments = commentService.getComments(1L, allParent);
-        return ResponseEntity.ok().body(comments);
-    }
-
     // 댓글 등록
     @PostMapping("/comment")
     public ResponseEntity<Long> saveComment(@RequestBody CommentRequest.Create commentRequest) {

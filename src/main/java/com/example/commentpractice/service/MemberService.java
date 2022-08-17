@@ -40,12 +40,10 @@ public class MemberService {
     }
 
     public Member findById(Long id){
-        return getMembers()
-                .stream()
-                .filter(member -> member.getId() == id)
-                .findAny()
-                .orElseThrow(() -> {
-                    throw new ResponseStatusException(HttpStatus.NOT_FOUND, "해당하는 유저 번호가 없습니다");
-                });
+        for(Member member : getMembers()) {
+            if (member.getId() == id)
+                return member;
+        }
+        throw new ResponseStatusException(HttpStatus.NOT_FOUND, "해당하는 유저 번호가 없습니다");
     }
 }
