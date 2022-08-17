@@ -41,7 +41,8 @@ public class CommentController {
         return ResponseEntity.ok().body("댓글 수정 완료");
     }
 
-//     댓글 신고
+
+    // 댓글 신고
     @PostMapping("/comments/{commentId}/report")
     public ResponseEntity<String> reportComment(
             @RequestBody CommentRequest.ReportCreate commentReportDto,

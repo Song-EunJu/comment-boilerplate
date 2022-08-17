@@ -20,7 +20,7 @@ public class CommentResponse {
     private List<CommentResponse> replies;
     private List<ReportResponse> reports;
 
-    public static CommentResponse of(Comment comment, List<CommentResponse> replies, List<ReportResponse> reports) {
+    public static CommentResponse of(Comment comment, List<CommentResponse> replies) {
         return CommentResponse.builder()
                 .commentId(comment.getId())
                 .userId(comment.getMember().getId())
@@ -28,7 +28,7 @@ public class CommentResponse {
                 .comment(comment.getComment())
                 .deleteStatus(comment.getDeleteStatus())
                 .secret(comment.getSecret())
-                .reports(reports)
+                .reports(ReportResponse.toReportList(comment.getReports()))
                 .replies(replies)
                 .build();
     }

@@ -2,7 +2,6 @@ package com.example.commentpractice.service;
 
 import com.example.commentpractice.dto.CommentRequest;
 import com.example.commentpractice.dto.CommentResponse;
-import com.example.commentpractice.dto.ReportResponse;
 import com.example.commentpractice.entity.comment.Comment;
 import com.example.commentpractice.entity.comment.CommentReply;
 import com.example.commentpractice.entity.report.Report;
@@ -36,7 +35,7 @@ public class CommentService {
 
     @Bean
     public void init(){
-        comments = commentRepository.findAll();
+        comments = commentRepository.findAllComments();
         commentReplies = commentReplyRepository.findAll(Sort.by(Sort.Direction.ASC, "parentId"));
         filteredCommentReplies = new ArrayList<>(commentReplies);
     }
@@ -49,6 +48,10 @@ public class CommentService {
 
     private void updateComments(Comment updatedComment) {
         comments.add(updatedComment);
+    }
+
+    public List<Comment> getAll(){
+        return comments;
     }
 
     public void confirmUpdateAuth(Comment comment, Member member) {
@@ -88,6 +91,9 @@ public class CommentService {
     public List<CommentResponse> getComments(Long userId, Boolean allParent) {
         Member member = memberService.findById(userId); // 조회자
 
+        // 조회할 때마다 다시 초기화해줘야 안없어짐
+        filteredCommentReplies = new ArrayList<>(commentReplies);
+
         // 부모댓글 번호로 정렬된 댓글들 중 최상위 (부모) 댓글들만 필터링
         List<CommentReply> parentComments = new ArrayList<>();
         for(CommentReply commentReply: commentReplies) {
@@ -100,17 +106,15 @@ public class CommentService {
         return getCommentResponses(member, allParent, finalList, parentComments);
     }
 
-    // 신고 내역은 부모댓글뿐만 아니라 모든 댓글이 다 보여야 함, 댓글 각각을 돌 때마다 필요 !!
-
+    // 신고 내역은 부모댓글뿐만 아니라 모든 댓글이 다 보여야 함, 댓글 각각을 돌 때마다 필요
     List<CommentResponse> getCommentResponses(Member member, Boolean allParent, List<CommentResponse> list,
                                               List<CommentReply> parentComments) {
         // 최상위 댓글 중 부모댓글로 정렬한 리스트로 for문 순회
         for(int i=0;i<parentComments.size();i++) {
             CommentReply cr = parentComments.get(i);
             Comment reply = findCommentById(cr.getCommentId()); // ex) 최상위 댓글 객체 1번
-            System.out.println(reply.getReports().size());
             List<CommentResponse> response = getReplies(reply, member, allParent); // 1번 댓글의 대댓글 받아오기
-            CommentResponse commentResponse = CommentResponse.of(reply, response, ReportResponse.toReportList(reply.getReports()));
+            CommentResponse commentResponse = CommentResponse.of(reply, response);
             commentResponse.setComment(changeComment(reply, member, allParent)); // 반환할 때 문자열 변경
             list.add(commentResponse);
         }
@@ -128,7 +132,7 @@ public class CommentService {
         if (commentReplies.isEmpty()) {
             return new ArrayList<>();
         }
-        return getCommentResponses(member, allParent, list, commentReplies);  // commentReplies = 2,5 번
+        return getCommentResponses(member, allParent, list, commentReplies);  // commentReplies = 2,5번
     }
 
     // 해당 댓글을 부모댓글로 가지고 있는 대댓글이 있는지 확인
@@ -199,7 +203,6 @@ public class CommentService {
         }
         return comment.getComment(); // while문을 빠져나온 경우 부모댓글 작성자 == 조회자인 경우
     }
-
 
     // 바로 상위 댓글 조회 가능
     public String permitDirectParent(Comment comment, Long parentCommentWriterId, Long memberId){
