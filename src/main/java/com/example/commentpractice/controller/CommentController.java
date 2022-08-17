@@ -16,12 +16,23 @@ import java.util.List;
 public class CommentController {
     private final CommentService commentService;
 
-    // 댓글 조회 (DTO 사용)
+    // 댓글 조회
     @GetMapping("/comments")
     public ResponseEntity<List<CommentResponse>> getComments(
             @RequestParam("userId") Long userId,
             @RequestParam("allParent") Boolean allParent) {
         List<CommentResponse> comments = commentService.getComments(userId, allParent);
+        return ResponseEntity.ok().body(comments);
+    }
+
+    @GetMapping("/comments2")
+    public ResponseEntity<List<CommentResponse>> getComments2(
+            @RequestParam(value = "userId") List<Long> ids,
+            @RequestParam(value = "allParent", required = false) Boolean allParent) {
+        for(Long id:ids){
+            System.out.println(id);
+         }
+        List<CommentResponse> comments = commentService.getComments(1L, allParent);
         return ResponseEntity.ok().body(comments);
     }
 

@@ -50,10 +50,6 @@ public class CommentService {
         comments.add(updatedComment);
     }
 
-    public List<Comment> getAll(){
-        return comments;
-    }
-
     public void confirmUpdateAuth(Comment comment, Member member) {
         if (comment.getMember().getId() != member.getId()) // 작성자가 아닌 경우
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "수정 권한이 없습니다");
@@ -91,8 +87,7 @@ public class CommentService {
     public List<CommentResponse> getComments(Long userId, Boolean allParent) {
         Member member = memberService.findById(userId); // 조회자
 
-        // 조회할 때마다 다시 초기화해줘야 안없어짐
-        filteredCommentReplies = new ArrayList<>(commentReplies);
+        filteredCommentReplies = new ArrayList<>(commentReplies); // 조회할 때마다 다시 초기화해줘야 안없어짐
 
         // 부모댓글 번호로 정렬된 댓글들 중 최상위 (부모) 댓글들만 필터링
         List<CommentReply> parentComments = new ArrayList<>();
@@ -129,9 +124,8 @@ public class CommentService {
         List<CommentReply> commentReplies = findCommentReplyByParentId(parent.getId());
 
         // 대댓글의 끝까지 온 경우 빈 리스트 리턴
-        if (commentReplies.isEmpty()) {
+        if (commentReplies.isEmpty())
             return new ArrayList<>();
-        }
         return getCommentResponses(member, allParent, list, commentReplies);  // commentReplies = 2,5번
     }
 
@@ -141,7 +135,6 @@ public class CommentService {
 
         for(int i=0;i<filteredCommentReplies.size();i++){ // for문을 돌 때마다 리스트에 담긴 댓글들은 remove되므로 size가 계속 줄어듦
             CommentReply commentReply = filteredCommentReplies.get(i);
-
             if(commentReply.getParentId() == 0) // 부모 댓글일 경우 안돌아도됨
                 continue;
 
@@ -207,8 +200,7 @@ public class CommentService {
     // 바로 상위 댓글 조회 가능
     public String permitDirectParent(Comment comment, Long parentCommentWriterId, Long memberId){
         return parentCommentWriterId != memberId // 부모댓글작성자 != 조회자
-                ? "비밀 댓글입니다"
-                : comment.getComment();
+                ? "비밀 댓글입니다" : comment.getComment();
     }
 
     // 댓글 등록
@@ -243,6 +235,7 @@ public class CommentService {
         Comment updatedComment = commentRepository.save(comment); // select, update 각각 1번씩 일어남
         comments.remove(comment);
         updateComments(updatedComment);
+        // 객체를 setter 로 값을 바꿔서 수정해버림
     }
 
     // 댓글 삭제

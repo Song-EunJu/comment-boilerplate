@@ -56,7 +56,6 @@ public class Comment extends BaseTimeEntity {
         this.deleteStatus = true;
     }
 
-
     public void updateComment(CommentRequest.Create commentRequest) {
         if (commentRequest.getComment() != null)
             this.comment = commentRequest.getComment();
